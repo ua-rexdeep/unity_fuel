@@ -3,7 +3,7 @@ type Callback = (...retArgs: unknown[]) => void;
 const ids = {};
 
 export const Adapter = {
-    getInterface: (name) => new Proxy({ name }, {
+    getInterface: (name): vRPServerFunctions => new Proxy({ name }, {
         get: proxy_resolve,
     })
 };
