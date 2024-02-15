@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-      "module": "commonjs",
+      "module": "ESNext",
       "removeComments": true,
       "emitDecoratorMetadata": true,
       "experimentalDecorators": true,
@@ -8,10 +8,13 @@
       "target": "esnext",
       "sourceMap": false,
       "outDir": "./dist",
-      "baseUrl": "./",
+      "baseUrl": "src",
       "incremental": true,
       "skipLibCheck": true,
-      "types": ["@citizenfx/server", "@citizenfx/client", "node"]
+      "types": ["@citizenfx/server", "@citizenfx/client", "node"],
+      "paths": {
+        "@/*": ["./"]
+      }
     },
     "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
   }
