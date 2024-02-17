@@ -1,3 +1,5 @@
+import { EventName } from '../../utils';
+
 export class PlayerService {
     constructor(
         private readonly vRP: vRPServerFunctions, 
@@ -13,5 +15,10 @@ export class PlayerService {
 
     Notification(source: number, notification: string) {
         this.vRPClient.notify(source, notification);
+    }
+
+    // source = -1 for all players to be target
+    CreateRopeWithAttachments(source, ropeAttachements) {
+        emitNet(EventName('CreateRopeWithAttachments'), source, ropeAttachements);
     }
 }

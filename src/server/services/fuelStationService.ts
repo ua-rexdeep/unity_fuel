@@ -1,5 +1,5 @@
 import { Logger } from '../../logger';
-import { vDist } from '../../utils';
+import { EventName, vDist } from '../../utils';
 import { MySQLService } from './mysqlService';
 
 export type FuelStation = {
@@ -20,7 +20,10 @@ export type FuelStationDTO = {
 
 export type FuelPump = {
     id: string,
+    netEntity?: number,
     hosepipes: {
+        nozzleEntity?: number,
+        slotEntity?: number,
         pickedUpPlayer?: number,
         inVehicle?: number,
         fuelProcess?: number,
@@ -84,10 +87,12 @@ export class FuelStationService {
         `)(dto);
         
         const station = await this.FetchFuelStationByID(insertId);
-        this.stations.push({
+        const fuelWithPumps = {
             ...station,
             pumps: [],
-        });
+        };
+        this.stations.push(fuelWithPumps);
+        return fuelWithPumps;
     }
 
     private FetchAllFuelStations() {
@@ -98,6 +103,10 @@ export class FuelStationService {
         return this.MySQL.Command<{ stationId: number }, FuelStation>(`
             select * from ${this.fuelStationsTableName} where \`id\` = @stationId;
         `)({ stationId });
+    }
+
+    GetAllStations(){
+        return JSON.parse(JSON.stringify(this.stations)) as Array<FuelStation & { pumps: FuelPump[] }>;
     }
 
     GetPlayerNearestStation(player: number) {
@@ -115,7 +124,6 @@ export class FuelStationService {
     }
 
     GetPumpStation(pumpId: string) {
-        console.log(this.stations);
         return this.stations.find((station) => {
             if(station.pumps.some((pump) => pump.id == pumpId)) return station;
         });
@@ -148,5 +156,69 @@ export class FuelStationService {
             broken: false,
         };
         return pump.hosepipes[hosepipeIndex];
+    }
+
+    GetPumpFromEntity(netEntity: number) {
+        for(const station of this.stations) {
+            const pump = station.pumps.find((pump) => pump.netEntity == netEntity);
+            if(pump) return pump;
+        }
+    }
+
+    // взяти пістолет з колонки
+    GiveNozzleToPlayer(pumpId: string, hosepipeIndex: number, playerId: number, pumpNetId: number) {
+        const pump = this.GetPumpData(pumpId);
+        pump.netEntity = pumpNetId;
+        emitNet(EventName('GiveNozzleToPlayer'), playerId, pumpNetId, hosepipeIndex);
+    }
+
+    // поставити пістолет в колонку
+    TakeNozzleFromPlayer(pumpId: string, hosepipeIndex: number, playerId: number, pumpNetId: number){
+        const pump = this.GetPumpData(pumpId);
+        const hosepipe = this.GetHosepipeData(pumpId, hosepipeIndex);
+        pump.netEntity = null;
+        emitNet(EventName('TakeNozzleFromPlayer'), playerId, pumpNetId, hosepipeIndex, hosepipe.nozzleEntity);
+    }
+
+    SetHosepipeTakenData(player: number, pumpEntity: number, nozzleEntity: number, pumpSlotEntity: number, hosepipeIndex: number) {
+        const logger = new Logger('SetHosepipeTakenData', player.toString(), pumpEntity.toString());
+        const pump = this.GetPumpFromEntity(pumpEntity);
+        pump.hosepipes[hosepipeIndex].slotEntity = pumpSlotEntity;
+        pump.hosepipes[hosepipeIndex].nozzleEntity = nozzleEntity;
+        pump.hosepipes[hosepipeIndex].pickedUpPlayer = player;
+    }
+
+    SetHosepipePlayerHold(player: number, nozzleNet: number) {
+        const hosepipe = this.GetHosepipeFromNozzle(nozzleNet);
+        hosepipe.inVehicle = null;
+        hosepipe.pickedUpPlayer = player;
+    }
+
+    GetHosepipeIsPlayerHold(player: number) {
+        for(const station of this.stations) {
+            for(const pump of station.pumps) {
+                for(const hosepipe of pump.hosepipes) {
+                    console.log('GetHosepipeIsPlayerHold', station.id, hosepipe?.pickedUpPlayer, '==', player);
+                    if(hosepipe?.pickedUpPlayer == player) return hosepipe;
+                }
+            }
+        }
+    }
+
+    private GetHosepipeFromNozzle(nozzleNet: number) {
+        for(const station of this.stations) {
+            for(const pump of station.pumps) {
+                for(const hosepipe of pump.hosepipes) {
+                    console.log('GetHosepipeFromNozzle', station.id, hosepipe?.nozzleEntity, '==', nozzleNet);
+                    if(hosepipe?.nozzleEntity == nozzleNet) return hosepipe;
+                }
+            }
+        }
+    }
+
+    SetHosepipeInVehicle(nozzleNet: number, vehicleNet: number) {
+        const hosepipe = this.GetHosepipeFromNozzle(nozzleNet);
+        hosepipe.pickedUpPlayer = null;
+        hosepipe.inVehicle = vehicleNet;
     }
 }

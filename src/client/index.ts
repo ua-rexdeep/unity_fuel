@@ -1,8 +1,10 @@
-import '@citizenfx/client';
-import { Wait } from '../utils';
+import { Handler } from './handlers';
+import { HosepipeService } from './services/hosepipe';
+import { RopeService } from './services/ropes';
+import { Threads } from './threads';
 
-setTick(async () => {
-    await Wait(1000);
+const ropeService = new RopeService();
+const hosepipeService = new HosepipeService(ropeService);
 
-    console.log('Wait');
-});
+new Threads(hosepipeService, ropeService);
+new Handler(hosepipeService, ropeService);
