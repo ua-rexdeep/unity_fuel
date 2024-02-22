@@ -1,20 +1,34 @@
 {
     "compilerOptions": {
-      "module": "ESNext",
-      "removeComments": true,
-      "emitDecoratorMetadata": true,
-      "experimentalDecorators": true,
-      "allowSyntheticDefaultImports": true,
-      "target": "esnext",
-      "sourceMap": false,
-      "outDir": "./dist",
-      "baseUrl": "src",
-      "incremental": true,
-      "skipLibCheck": true,
-      "types": ["@citizenfx/server", "@citizenfx/client", "node"],
-      "paths": {
-        "@/*": ["./"]
-      }
+        "module": "ESNext",
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "target": "esnext",
+        "sourceMap": false,
+        "outDir": "./dist",
+        "baseUrl": "src",
+        "incremental": true,
+        "skipLibCheck": true,
+        "strictNullChecks": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "types": [
+            "@citizenfx/server",
+            "@citizenfx/client",
+            "node"
+        ],
+        "paths": {
+            "@/*": [
+                "./"
+            ]
+        }
     },
-    "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
-  }
+    "exclude": [
+        "node_modules",
+        "dist",
+        "test",
+        "**/*spec.ts"
+    ]
+}

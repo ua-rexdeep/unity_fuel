@@ -11,6 +11,12 @@ client_scripts {
 }
   
 server_scripts {
-    "@vrp/lib/utils.lua",
+    'config.lua',
     'dist/server.js'
 }
+
+
+files {
+    "src/ui/*",
+}
+ui_page "src/ui/index.html"

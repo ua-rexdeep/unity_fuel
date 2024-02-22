@@ -1,3 +1,4 @@
+type VectorArray = [number, number, number];
 type vRPServerFunctions = {
     getUserId(source: number): Promise<number>,
     defInventoryItem(
@@ -67,4 +68,31 @@ type UserIdentities = {
     firstname: string,
     name: string,
     age: string,
+}
+
+type EssenceTable = Record<number, number>;
+type ServerConfig = {
+    EssenceTable: EssenceTable,
+}
+type ClientConfig = {
+    MinFuelForDegrade: number,
+}
+interface RopeAttachements {
+    pumpCoords: number[];
+    from: {
+        netEntity: number;
+        offset: {
+            x: number;
+            y: number;
+            z: number;
+        };
+    };
+    to: {
+        netEntity: number;
+        offset: {
+            x: number;
+            y: number;
+            z: number;
+        };
+    };
 }

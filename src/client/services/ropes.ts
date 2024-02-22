@@ -1,4 +1,5 @@
-import { LoadRopeTextures } from '../../utils';
+import { Logger } from '../../logger';
+import { LoadRopeTextures, Wait } from '../../utils';
 
 interface AttachDTO {
     netEntity: number,
@@ -28,7 +29,15 @@ export class RopeService {
         return ropeId;
     }
 
-    async CreateWithAttachments(ropeAttachements){
+    async CreateWithAttachments(ropeAttachements: RopeAttachements){
+
+        console.log(NetworkDoesNetworkIdExist(ropeAttachements.from.netEntity), NetworkDoesNetworkIdExist(ropeAttachements.to.netEntity));
+
+        while(!NetworkDoesNetworkIdExist(ropeAttachements.to.netEntity) || !NetworkDoesNetworkIdExist(ropeAttachements.from.netEntity)) {
+            console.log('WAIT');
+            await Wait(10);
+        }
+
         const ropeId = await this.Create(ropeAttachements.pumpCoords[0], ropeAttachements.pumpCoords[1], ropeAttachements.pumpCoords[2]);
         this.AttachEntitiesToRope(ropeId, ropeAttachements);
     }
@@ -46,11 +55,14 @@ export class RopeService {
         const localEntityTo = NetworkGetEntityFromNetworkId(attachData.to.netEntity);
         const toOffset = GetOffsetFromEntityInWorldCoords(localEntityTo, attachData.to.offset.x, attachData.to.offset.y, attachData.to.offset.z);
 
+        new Logger('AttachEntitiesToRope', attachData.from.netEntity, attachData.to.netEntity);
+        new Logger('AttachEntitiesToRope', localEntityFrom, localEntityTo);
+
         AttachEntitiesToRope(
             ropeId, localEntityFrom, localEntityTo, 
             fromOffset[0], fromOffset[1], fromOffset[2], 
             toOffset[0], toOffset[1], toOffset[2], 
-            5.0, false, false, null, null);
+            5.0, false, false, '', '');
 
         return this.list[ropeId];
     }
@@ -66,6 +78,7 @@ export class RopeService {
                 return +ropeId;
             }
         }
+        return null;
     }
 
 }

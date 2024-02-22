@@ -1,5 +1,6 @@
-import { Wait } from '../utils';
+import { EventName, Wait } from '../utils';
 import { FuelStationHandler } from './handlers/fuelStationHandler';
+import { FuelEssenceService } from './services/fuelEssenceService';
 import { FuelStationService } from './services/fuelStationService';
 import { MySQLService } from './services/mysqlService';
 import { PlayerService } from './services/playerService';
@@ -11,11 +12,12 @@ const vRPClient = ClientAdapter.getInterface('vRP', 'vRP');
 
 const MySQL = new MySQLService();
 const playerService = new PlayerService(vRP, vRPClient);
+const fuelEssenceService = new FuelEssenceService(vRP, vRPClient, playerService);
 const fuelStationService = new FuelStationService(vRP, vRPClient, MySQL);
 
-new FuelStationHandler(fuelStationService, playerService);
+new FuelStationHandler(fuelStationService, fuelEssenceService, playerService);
 
-new Threads(fuelStationService, playerService);
+new Threads(fuelStationService, fuelEssenceService, playerService);
 
 // setTick(async () => {
 //     console.log('Fuel tick');
@@ -23,3 +25,5 @@ new Threads(fuelStationService, playerService);
 
 //     console.log(fuelStationService.GetPlayerNearestStation(1));
 // });
+
+emit(EventName('RequestConfig'));

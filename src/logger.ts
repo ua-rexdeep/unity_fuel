@@ -1,7 +1,7 @@
 export class Logger {
     private readonly title: string;
 
-    constructor(title: string, ...args: string[]) {
+    constructor(title: string, ...args) {
         this.title = title;
         if(args.length) this.Log(...args);
         else this.Log('Logger');
@@ -20,25 +20,23 @@ export class Logger {
     static darkblue(args: string | number | boolean) { return Logger.color(9, args); }
 
     Log(...args) {
-        if(args.some((a) => typeof(a) == 'object')) {
-            console.log(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), ...args.map((a) => Logger.white(a)));
-        }
-        else console.log(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), args.map((a) => Logger.white(a)).join(' '));
+        const strs = args.filter((str) => typeof(str) != 'object');
+        const objs = args.filter((str) => typeof(str) == 'object');
+        console.log(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a) => Logger.white(a)).join(' '));
+        if(objs.length) objs.forEach((obj) => console.log('^4', obj, '^0'));
     }
 
     Warn(...args) {
-        
-        if(args.some((a) => typeof(a) == 'object')) {
-            console.warn(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), ...args.map((a) => Logger.yellow(a)));
-        }
-        else console.warn(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), args.map((a) => Logger.yellow(a)).join(' '));
+        const strs = args.filter((str) => typeof(str) != 'object');
+        const objs = args.filter((str) => typeof(str) == 'object');
+        console.warn(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a) => Logger.yellow(a)).join(' '));
+        if(objs.length) objs.forEach((obj) => console.log('^4', obj, '^0'));
     }
 
     Error(...args) {
-        
-        if(args.some((a) => typeof(a) == 'object')) {
-            console.error(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), ...args.map((a) => Logger.red(a)));
-        }
-        else console.error(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), args.map((a) => Logger.red(a)).join(' '));
+        const strs = args.filter((str) => typeof(str) != 'object');
+        const objs = args.filter((str) => typeof(str) == 'object');
+        console.error(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a) => Logger.red(a)).join(' '));
+        if(objs.length) objs.forEach((obj) => console.log('^4', obj, '^0'));
     }
 }

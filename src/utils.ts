@@ -34,3 +34,52 @@ export function DrawText3D(x, y, z, text, r = 255, g = 255, b = 255) {
         DrawText(_x, _y);
     }
 }
+export class Vector3 {
+    constructor(public x: number, public y: number, public z: number) {}
+    static fromArray([x, y, z]: number[]) {
+        return new this(x,y,z);
+    }
+
+    toObject() {
+        return { x: this.x, y: this.y, z: this.z };
+    }
+
+    toArray() {
+        return [this.x, this.y, this.z];
+    }
+}
+
+function* generator() {
+    while (true) {
+        const random = Math.random()
+            .toString(16)
+            .slice(2, 10);
+        yield `0x${random}`;
+    }
+}
+  
+const preload = (knowObjects: any, refs: any, generate: any) => (reference = false) => {
+    if (reference) {
+        return refs;
+    } else {
+        return (obj: any) => {
+            let address;
+            if (knowObjects.has(obj)) {
+                address = knowObjects.get(obj);
+            } else {
+                address = generate.next().value;
+                knowObjects.set(obj, address);
+                refs[address] = obj;
+            }
+            return address;
+        };
+    }
+};
+  
+const setup = preload(new Map(), {}, generator());
+
+/**
+ * !!DEV ONLY
+ * @deprecated
+ */
+export const get_mem_addr = (variable: any) => setup(false)(variable);

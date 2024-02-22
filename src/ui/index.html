@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://kit.fontawesome.com/81125059b6.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="absolute bottom-[2%] flex items-center justify-center w-full">
+        <div class="pumpDisplay py-5 px-7">
+            <div class="flex justify-between">
+                <div class="text-white text-2xl w-11 flex p-2"><i class="fas fa-dollar-sign"></i></div>
+                <div class="fuelCost leading-none py-1">0.00</div>
+            </div>
+            <div class="flex justify-between">
+                <div class="text-white text-2xl w-11 flex p-2"><i class="fas fa-gas-pump"></i></div>
+                <div class="fuelTank leading-none py-1">0.00</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        window.addEventListener("message", function(event) {
+            const item = event.data;
+            console.log(item, item.type === "status")
+            if (item.type === "status") {
+                if (item.status) {
+                    $(".pumpDisplay").fadeIn("fast");
+                } else {
+                    $(".pumpDisplay").fadeOut("slow");
+                };
+            };
+            if (item.type === "update") {
+                $(".fuelCost").text(item.fuelCost);
+                $(".fuelTank").text(item.fuelTank);
+            };
+            if (item.type === "warn") {
+                $(".fuelCurrency").toggleClass("flashRed");
+            }
+        })
+        // setTimeout(() => {
+        //     window.postMessage({ type: 'status', status: true });
+        //     window.postMessage({ type: 'update', fuelCost: '13844.00', fuelTank: '455.02' });
+        // }, 100)
+    </script>
+</body>
+</html>
+
+<style>
+    @font-face {
+        font-family: "digital-counter-7";
+        src: url("digital-counter-7.ttf");
+    }
+    body {
+        overflow: hidden;
+    }
+    .pumpDisplay {
+        display: none;
+        width: 225px;
+        height: 127px;
+        user-select: none;
+        background: center / cover no-repeat url(https://i.imgur.com/wkMX6FG.png);
+    }
+    .displayBackground {
+        position: absolute;
+        margin: auto;
+        right: 0;
+        left: 0;
+        width: auto;
+        height: 100%;
+    }
+    .fuelCost {
+        /* position: absolute; */
+        /* margin: auto; */
+        /* right: 45.2%; */
+        /* top: 18%; */
+        text-align: center;
+
+        font-family: "digital-counter-7", sans-serif;
+        font-size: 3vh;
+        color: #060608;
+    }
+    .fuelTank {
+        /* position: absolute; */
+        /* margin: auto; */
+        /* right: 45.2%; */
+        /* top: 48%; */
+        text-align: center;
+
+        font-family: "digital-counter-7", sans-serif;
+        font-size: 3vh;
+        color: #060608;
+    }
+    @keyframes warn {
+        0%   {color: red;}
+        50%  {color: #ffffff;}
+        100% {color: red;}
+    }
+    .fuelCurrency.flashRed {
+        transition: 1s;
+        animation-name: warn;
+        animation-duration: 4s;
+    }
+</style>

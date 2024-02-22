@@ -10,14 +10,20 @@ export const Adapter = {
 const proxy_resolve = (obj, funcName) => (...args: NonNullable<any>) => new Promise((done: Callback) => {
     
     TriggerEvent(`${obj.name}:proxy`, funcName, [...args], (...re: any[]) => {
-        done(...re);
+        done(...re[0]);
     });
 });
 
 export const ClientAdapter = {
-    getInterface: (name, identifier) => new Proxy({ name, identifier }, {
-        get: client_proxy_resolve,
-    })
+    getInterface: (name, identifier) => {
+    
+        onNet(`${name}:${identifier}:tunnel_res`, tunnel_return);
+        on(`${name}:${identifier}:tunnel_res`, tunnel_return);
+        
+        return new Proxy({ name, identifier }, {
+            get: client_proxy_resolve,
+        });
+    }
 };
 
 const tunnel_return = (rid, args) => {
@@ -27,20 +33,14 @@ const tunnel_return = (rid, args) => {
     }
 };
 
-const client_proxy_resolve = (obj, funcName: string) => {
-    
-    onNet(`${obj.name}:${obj.identifier}:tunnel_res`, tunnel_return);
-    on(`${obj.name}:${obj.identifier}:tunnel_res`, tunnel_return);
+const client_proxy_resolve = (obj, funcName: string) => (source: number, ...args: NonNullable<any>) => new Promise((done: Callback) => {
 
-    return (source: number, ...args: NonNullable<any>) => new Promise((done: Callback) => {
+    let id = Date.now();
+    while(ids[id] != null) {
+        id++;
+    }
 
-        let id = Date.now();
-        while(ids[id] != null) {
-            id++;
-        }
+    ids[id] = done;
 
-        ids[id] = done;
-
-        emitNet(`${obj.name}:tunnel_req`,source,funcName,args,obj.identifier, id);
-    });
-};
+    emitNet(`${obj.name}:tunnel_req`,source,funcName,args,obj.identifier, id);
+});
