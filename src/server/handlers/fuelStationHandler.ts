@@ -18,12 +18,17 @@ export class FuelStationHandler {
         onNet(EventName('RequestDetachNozzle'), this.RequestDetachNozzle.bind(this));
 
         onNet('proptInt:OnPlayerRegisterObject', this.OnPlayerRegisterObject.bind(this));
+        onNet(EventName('DEVSetFuelLevel'), this.DEVSetFuelLevel.bind(this));
 
         on(EventName('Config'), this.OnConfigReceived.bind(this));
 
         if(process.env.NODE_ENV == 'development') {
             process.on('warning', (e) => console.warn(e.stack)); // memory leak trace
         }
+    }
+
+    private DEVSetFuelLevel(vehicleNet: number, fuel: number) {
+        this.essenceService.SetVehicleFuel(vehicleNet, fuel);
     }
 
     private ACTION_ID = 0;
@@ -162,7 +167,7 @@ export class FuelStationHandler {
         // this.playerService.SetPlayerLastVehicle(global.source, vehicleNet);
         const vehicleData = this.essenceService.AddVehicleAsPlayerVehicle(vehicleNet, vehicleClass, startFuelLevel);
         console.log('plen', EventName('VehicleFuelUpdated'), global.source, vehicleNet, vehicleData.fuel);
-        emitNet(EventName('VehicleFuelUpdated'), global.source, vehicleNet, vehicleData.fuel);
+        emitNet(EventName('VehicleFuelUpdated'), global.source, vehicleNet, vehicleData.fuel, this.essenceService.GetVehicleMaxFuel(vehicleNet));
     }
 
     private async RefuelVehicle(vehicleNet) {

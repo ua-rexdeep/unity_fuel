@@ -1,5 +1,5 @@
 import { Logger } from '../logger';
-import { EventName, vDist, Wait } from '../utils';
+import { EventName, vDist, Vector3, Wait } from '../utils';
 import { FuelEssenceService } from './services/fuelEssenceService';
 import { FuelStationService } from './services/fuelStationService';
 import { PlayerService } from './services/playerService';
@@ -100,6 +100,7 @@ export class Threads {
         }
     }
 
+    private mileage: { meliage: number, lastCoords: Vector3 | null } = { meliage: 0, lastCoords: null };
     private async VehicleFuelLogger() {
         for(const player of getPlayers()) {
             const vehicle = GetVehiclePedIsIn(GetPlayerPed(player), false);
@@ -107,9 +108,14 @@ export class Threads {
             const vehicleNet = NetworkGetNetworkIdFromEntity(vehicle);
             if(!this.essenceService.IsVehicleInMemory(vehicleNet)) continue;
 
+            const [x,y,z] = GetEntityCoords(vehicle);
+            if(!this.mileage.lastCoords) this.mileage.lastCoords = new Vector3(x,y,z);
+            this.mileage.meliage += vDist(this.mileage.lastCoords.x, this.mileage.lastCoords.y, this.mileage.lastCoords.z, x,y,z);
+            this.mileage.lastCoords = new Vector3(x,y,z);
+
             emitNet('propInt::Debugger', player, {
                 id: 'cm:2',
-                text: `Vehicle(${vehicleNet}) | Fuel: ${this.essenceService.GetVehicleFuel(vehicleNet)?.toFixed(1)}/${this.essenceService.GetVehicleMaxFuel(vehicleNet)}`,
+                text: `Vehicle(${vehicleNet}) | Fuel: ${this.essenceService.GetVehicleFuel(vehicleNet)?.toFixed(2)}/${this.essenceService.GetVehicleMaxFuel(vehicleNet)} | Meliage: ${(this.mileage.meliage / 1000).toFixed(2)} km`,
                 entity: 0,
                 left: 50,
                 top: 400,

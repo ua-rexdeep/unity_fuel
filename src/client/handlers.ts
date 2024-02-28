@@ -66,15 +66,15 @@ export class Handler {
         ActivatePhysics(slotEntity);
     }
 
-    private VehicleFuelUpdated(vehicleNet: number, fuel: number) {
+    private VehicleFuelUpdated(vehicleNet: number, fuel: number, maxFuel: number) {
         const playerPed = GetPlayerPed(-1);
         const playerVehicle = GetVehiclePedIsIn(playerPed, false);
         const vehicleEntity = NetworkGetEntityFromNetworkId(vehicleNet);
-        console.log('UPDFUEL', typeof(vehicleNet), vehicleNet, fuel, playerVehicle, vehicleEntity);
+        // console.log('UPDFUEL', typeof(vehicleNet), vehicleNet, fuel, playerVehicle, vehicleEntity);
 
         SetVehicleFuelLevel(vehicleEntity, fuel == 0 ? 20 : 50);
         if(playerVehicle == vehicleEntity) {
-            this.vehicleService.VehicleFuelUpdated(vehicleEntity, fuel);
+            this.vehicleService.VehicleFuelUpdated(vehicleEntity, fuel, maxFuel);
         } else {
             this.vehicleService.ProcessVehicleFuelState(vehicleEntity);
         }

@@ -44,7 +44,7 @@ export class PlayerService {
 
     GetPlayerByPed(ped: number) {
         for(const player of getPlayers()) {
-            if(GetPlayerPed(player) == ped) return player;
+            if(GetPlayerPed(player) == ped) return +player;
         }
         return null;
     }

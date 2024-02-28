@@ -122,6 +122,12 @@ export class FuelEssenceService {
         return this.Vehicles[vehicleNet] != null;
     }
 
+    SetVehicleFuel(vehicleNet: number, fuel: number): void {
+        if(!this.IsVehicleInMemory(vehicleNet)) throw new Error(`Vehicle ${vehicleNet} is not in memory`);
+        this.Vehicles[vehicleNet].fuel = fuel;
+        this.OnVehicleFuelUpdated(vehicleNet);
+    }
+
     GetVehicleFuel(vehicleNet: number): number | null {
         if(!this.IsVehicleInMemory(vehicleNet)) throw new Error(`Vehicle ${vehicleNet} is not in memory`);
         return this.Vehicles[vehicleNet].fuel;
@@ -250,14 +256,25 @@ export class FuelEssenceService {
 
                 const driver = GetPedInVehicleSeat(vehicleEntity, -1);
                 const driverPlayer = driver && this.playerService.GetPlayerByPed(driver);
+                // const vehicleMaxFuelLevel = this.GetVehicleMaxFuel(+vehicleNet);
                 if(driver && driverPlayer) {
-                    emitNet(EventName('VehicleFuelUpdated'), driverPlayer, +vehicleNet, vehicleData.fuel);
+                    // emitNet(EventName('VehicleFuelUpdated'), driverPlayer, +vehicleNet, vehicleData.fuel, vehicleMaxFuelLevel);
+                    this.OnVehicleFuelUpdated(+vehicleNet, driverPlayer);
                 } else if(vehicleData.fuel == 0) {
-                    console.warn('fuel is empty, send owner', NetworkGetEntityOwner(vehicleEntity));
-                    emitNet(EventName('VehicleFuelUpdated'), NetworkGetEntityOwner(vehicleEntity), +vehicleNet, vehicleData.fuel);
+                    console.warn('fuel is empty, send owner');
+                    // emitNet(EventName('VehicleFuelUpdated'), NetworkGetEntityOwner(vehicleEntity), +vehicleNet, vehicleData.fuel, vehicleMaxFuelLevel);
+                    this.OnVehicleFuelUpdated(+vehicleNet);
                 }
             }
         }
+    }
+
+    // driver is network owner by default
+    OnVehicleFuelUpdated(vehicleNet: number, driverPlayer: number | null = null) {
+        const vehicleEntity = NetworkGetEntityFromNetworkId(vehicleNet);
+        const vehicleData = this.Vehicles[vehicleNet];
+        const vehicleMaxFuelLevel = this.GetVehicleMaxFuel(+vehicleNet);
+        emitNet(EventName('VehicleFuelUpdated'), driverPlayer || NetworkGetEntityOwner(vehicleEntity), +vehicleNet, vehicleData.fuel, vehicleMaxFuelLevel);
     }
 
     SetEssenceTable(table: EssenceTable) {

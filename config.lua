@@ -1,7 +1,7 @@
 local EssenceTable = {
-    [0] = 0.00380, -- 0 - 3
-    [3] = 0.300, -- 3 - 30
-    [30] = 0.00270, -- 3 - 41
+    [0] = 0.00180, -- 0 - 3
+    [3] = 0.0200, -- 3 - 30
+    [30] = 0.00220, -- 3 - 41
     [41] = 0.00200,
     [51] = 0.00140,
     [55] = 0.00110,
@@ -16,7 +16,7 @@ local EssenceTable = {
     [150] = 0.00300,
     [160] = 0.00380,
     [170] = 0.00460,
-    [180] = 0.00500,
+    [180] = 0.00500
 }
 
 -- local EssenceTable = {
@@ -44,12 +44,12 @@ local MinFuelForDegrade = 0.5; -- при цій кількості топлив�
 
 AddEventHandler("UnityFuel::RequestConfig", function()
     TriggerEvent("UnityFuel::Config", {
-        EssenceTable = EssenceTable,
+        EssenceTable = EssenceTable
     })
 end)
 
 RegisterServerEvent("UnityFuel::RequestClientConfig", function()
     TriggerClientEvent("UnityFuel::ClientConfig", source, {
-        MinFuelForDegrade = MinFuelForDegrade,
+        MinFuelForDegrade = MinFuelForDegrade
     })
 end);
