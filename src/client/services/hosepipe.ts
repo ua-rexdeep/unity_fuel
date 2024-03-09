@@ -1,5 +1,5 @@
 import { Logger } from '../../logger';
-import { EventName, LoadModel, Wait } from '../../utils';
+import { EventName, LoadModel, Vector3, Wait } from '../../utils';
 import { EntityService } from './entity';
 import { RopeService } from './ropes';
 
@@ -31,7 +31,7 @@ export class HosepipeService {
         const playerCoords = GetEntityCoords(playerPed);
         const pumpCoords = GetEntityCoords(pumpEntity);
 
-        const model = await LoadModel('prop_cs_fuel_nozle');
+        const model = await LoadModel('prop_cs_electro_nozle');
         const nozzleId = CreateObject(
             model, 
             playerCoords[0], playerCoords[1], playerCoords[2], 
@@ -44,31 +44,20 @@ export class HosepipeService {
 
         const ballModel = await LoadModel('prop_golf_ball');
         const hosepipeOffset = slotOffset;
-        this.logger.Log('OFFSET FOR INDEX:', pumpEntity, hosepipeOffset);
-        this.logger.Warn(`Bug check: ${pumpEntity} ${DoesEntityExist(pumpEntity) ? 'pump exists' : 'pump not exists'}`);
         const worldPumpSlot = GetOffsetFromEntityInWorldCoords(pumpEntity, hosepipeOffset[0], hosepipeOffset[1], hosepipeOffset[2]);
-        this.logger.Warn('Ball coords:', worldPumpSlot[0], worldPumpSlot[1], worldPumpSlot[2]);
         const ball = CreateObject(ballModel, worldPumpSlot[0], worldPumpSlot[1], worldPumpSlot[2], true, true, true);
         FreezeEntityPosition(ball, true);
-        // SetEntityVisible(ball, false, false);
+        SetEntityVisible(ball, false, false);
 
         const ropeAttachements: RopeAttachements = {
             pumpCoords,
             from: {
                 netEntity: NetworkGetNetworkIdFromEntity(ball),
-                offset: {
-                    x: 0,
-                    y: 0,
-                    z: 0,
-                }
+                offset: { x: 0, y: 0, z: 0 }
             },
             to: {
                 netEntity: NetworkGetNetworkIdFromEntity(nozzleId),
-                offset: {
-                    x: 0.0,
-                    y: -0.033,
-                    z: -0.195,
-                }
+                offset: { x: 0.0, y: -0.033, z: -0.195 }
             }
         };
 
@@ -106,7 +95,7 @@ export class HosepipeService {
         return nozzleId;
     }
 
-    AttachToVehicle(nozzleEntity: number, vehicleNetId: number, fuelCupOffset: { x: number, y: number, z: number }) {
+    AttachToVehicle(nozzleEntity: number, vehicleNetId: number, fuelCupOffset: { x: number, y: number, z: number }, vehicleConfig: VehicleConfig | null) {
         const nozzleId = NetworkGetEntityFromNetworkId(nozzleEntity);
         const vehicleId = NetworkGetEntityFromNetworkId(vehicleNetId);
         this.logger.Warn(`Class of vehicle ${vehicleNetId}: ${GetVehicleClass(vehicleId)}`);
@@ -115,10 +104,11 @@ export class HosepipeService {
 
         this.entityService.RequestEntityControl(nozzleId, [vehicleNetId]);
 
+        const { x: nozRotX, y: nozRotY, z: nozRotZ } = vehicleConfig?.refillNozzleRotation || new Vector3(-125.0, -90.0, -90.0);
         AttachEntityToEntity(
             nozzleId, vehicleId, tankBoneIndex, 
             fuelCupOffset.x > 0 ? fuelCupOffset.x + 0.2 : fuelCupOffset.x - 0.2, fuelCupOffset.y, fuelCupOffset.z, 
-            -125.0, -90.0, -90.0, 
+            nozRotX, nozRotY, nozRotZ, 
             true, true, true, 
             false, 1, true);
     }

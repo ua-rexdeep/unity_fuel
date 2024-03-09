@@ -47,6 +47,10 @@ export class Vector3 {
     toArray() {
         return [this.x, this.y, this.z];
     }
+
+    static fromXYZ({x,y,z}: { x: number, y: number, z: number }) {
+        return new this(x,y,z);
+    }
 }
 
 function* generator() {

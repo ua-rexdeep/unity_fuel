@@ -16,59 +16,63 @@ export class Threads {
         this.Create('VehicleFuelLogger', this.VehicleFuelLogger.bind(this), 1000);
         this.Create('FuelEssence', this.FuelEssence.bind(this), 1000);
         this.Create('FuelStationViewDisplay', this.FuelStationViewDisplay.bind(this), 1000);
+        this.Create('SelectedWeapon', this.SelectedWeapon.bind(this), 100);
     }
 
     private Create(name: string, func: () => void, interval?: number) {
         let errorCatched = false;
-        setTick(async () => {
-            try {
-                errorCatched = false;
-                func();
-            } catch(e) {
-                if(!errorCatched) {
-                    errorCatched = true;
-                    this.logger.Error(`Error cathed in thread(${name})`);
-                    console.trace(e);
+        setTimeout(() => {
+            setTick(async () => {
+                try {
+                    errorCatched = false;
+                    func();
+                } catch(e) {
+                    if(!errorCatched) {
+                        errorCatched = true;
+                        this.logger.Error(`Error cathed in thread(${name})`);
+                        console.trace(e);
+                    }
                 }
-            }
-            if(interval != null) await Wait(interval);
-        });
+                if(interval != null) await Wait(interval);
+            });
+        }, 1000);
         this.logger.Log(`New thread(${name}) with interval ${interval}ms created.`);
     }
 
     private async NozzleTooFarFromPump() {
         const stations = this.service.GetAllStations();
         for(const station of stations) {
-            for(const pump of station.pumps) {
+            for(const pump of station.GetAllPumps()) {
 
+                // перевірити, чи на зміні об'єкту, воно не спрацює
                 // if(pump.netEntity && !DoesEntityExist(NetworkGetEntityFromNetworkId(pump.netEntity))) {
-                //     this.service.OnPumpNotLongerExists(pump.id);
+                //     pump.hosepipes.forEach((_, i) => this.DeleteNozzle(pump.id, i));
                 //     break;
                 // }
 
-                for(const hosepipe of pump.hosepipes) {
-                    if(hosepipe && pump.netEntity && NetworkGetEntityFromNetworkId(pump.netEntity) && hosepipe.nozzleEntity && hosepipe.slotEntity) { // в момент заміни моделі об'єкту - колонка не існує
-                        const model = GetEntityModel(NetworkGetEntityFromNetworkId(hosepipe.nozzleEntity));
-                        if(hosepipe.nozzleEntity != null && model == GetHashKey('prop_cs_fuel_nozle')) { // в деяких випадках, мережевий ID існує, але об'єкт не на своєму місці
+                for(const hosepipe of pump.GetAllHosepipes()) {
+                    if(hosepipe && pump.netEntity && NetworkGetEntityFromNetworkId(pump.netEntity) && hosepipe.GetNozzleNetId() && hosepipe.GetNozzleNetId()) { // в момент заміни моделі об'єкту - колонка не існує
+                        
+                        if(hosepipe.IsNozzleExistsAndValid()) {
 
-                            if((hosepipe.pickedUpPlayer || hosepipe.inVehicle) && !hosepipe.broken) { // not broken and not in pump
-                                const [nozzX, nozzY, nozzZ] = GetEntityCoords(NetworkGetEntityFromNetworkId(hosepipe.nozzleEntity));
+                            if((hosepipe.GetPlayer() || hosepipe.GetVehicle()) && !hosepipe.IsBroken()) { // not broken and not in pump
+                                const [nozzX, nozzY, nozzZ] = GetEntityCoords(hosepipe.GetNozzleLocalId());
                                 const [pumpX, pumpY, pumpZ] = GetEntityCoords(NetworkGetEntityFromNetworkId(pump.netEntity));
         
                                 if(vDist(nozzX, nozzY, nozzZ, pumpX, pumpY, pumpZ) >= 6.0) {
 
-                                    if(hosepipe.pickedUpPlayer) {
+                                    if(hosepipe.GetPlayer()) {
                                         console.log('NozzleTooFarFromPump -> Drop', vDist(nozzX, nozzY, nozzZ, pumpX, pumpY, pumpZ), nozzX, nozzY, pumpX, pumpY);
-                                        emitNet(EventName('DropPlayerNozzle'), hosepipe.pickedUpPlayer, hosepipe.nozzleEntity);
-                                        this.service.SetHosepipeDropped(hosepipe.nozzleEntity);
-                                    } else if(hosepipe.inVehicle) {
+                                        emitNet(EventName('DropPlayerNozzle'), hosepipe.GetPlayer(), hosepipe.GetNozzleNetId());
+                                        hosepipe.SetDropped();
+                                    } else if(hosepipe.GetVehicle()) {
                                         console.log('NozzleTooFarFromPump -> Drop2', vDist(nozzX, nozzY, nozzZ, pumpX, pumpY, pumpZ), nozzX, nozzY, pumpX, pumpY);
-                                        this.service.SetHosepipeBroken(hosepipe.nozzleEntity);
-                                        emitNet(EventName('HosepipeSlotBrokenByVehicle'), NetworkGetEntityOwner(NetworkGetEntityFromNetworkId(hosepipe.slotEntity)), hosepipe.slotEntity);
-                                        if(hosepipe.inVehicle) {
-                                            const refilling = this.essenceService.GetVehicleRefillingData(hosepipe.inVehicle);
-                                            if(refilling.inProgress) this.essenceService.InterruptVehicleRefill(hosepipe.inVehicle, false);
-                                        }
+                                        hosepipe.SetBroken();
+                                        emitNet(EventName('HosepipeSlotBrokenByVehicle'), NetworkGetEntityOwner(hosepipe.GetSlotLocalId()), hosepipe.GetSlotNetId());
+                                        
+                                        const refilling = this.essenceService.GetVehicleRefillingData(hosepipe.GetVehicle()!);
+                                        if(refilling.inProgress) this.essenceService.InterruptVehicleRefill(hosepipe.GetVehicle()!, false);
+                                        
                                     }
         
                                 }
@@ -117,7 +121,7 @@ export class Threads {
                 id: 'cm:2',
                 text: `Vehicle(${vehicleNet}) | Fuel: ${this.essenceService.GetVehicleFuel(vehicleNet)?.toFixed(2)}/${this.essenceService.GetVehicleMaxFuel(vehicleNet)} | Meliage: ${(this.mileage.meliage / 1000).toFixed(2)} km`,
                 entity: 0,
-                left: 50,
+                left: 200,
                 top: 400,
                 customPosition: true,
             });
@@ -137,10 +141,10 @@ export class Threads {
             const station = this.service.GetPlayerNearestStation(player);
             if(!station) continue;
             let playerOnAnyPump = false;
-            for(const pump of station.pumps) {
-                for(const hosepipe of pump.hosepipes) {
-                    if(hosepipe != null && hosepipe.inVehicle && this.essenceService.IsVehicleInMemory(hosepipe.inVehicle)) {
-                        const vehicleOnHosepipe = this.essenceService.GetVehicleRefillingData(hosepipe.inVehicle);
+            for(const pump of station.GetAllPumps()) {
+                for(const hosepipe of pump.GetAllHosepipes()) {
+                    if(hosepipe != null && hosepipe.GetVehicle() && this.essenceService.IsVehicleInMemory(hosepipe.GetVehicle()!)) {
+                        const vehicleOnHosepipe = this.essenceService.GetVehicleRefillingData(hosepipe.GetVehicle()!);
 
                         const dist = vDist(hosepipe.viewDisplayWorldCoords.x, hosepipe.viewDisplayWorldCoords.y, hosepipe.viewDisplayWorldCoords.z, playerCoords[0], playerCoords[1], playerCoords[2]);
                         console.log(`Player ${player} pump(${pump.id}) distance(${dist})`);
@@ -160,5 +164,27 @@ export class Threads {
                 this.playerService.SendPlayerHideRefillData(player);
             }
         }
+    }
+
+    private pedsWeaponCache = {};
+    private SelectedWeapon() {
+        const nextCache = {};
+        for(const player of this.playerService.GetPlayers()) {
+            const ped = GetPlayerPed(player);
+            const weapon = GetSelectedPedWeapon(ped);
+
+            if(weapon == GetHashKey('WEAPON_PETROLCAN')) {
+                nextCache[ped] = weapon;
+
+                if(this.pedsWeaponCache[ped] != weapon) {
+                    this.playerService.GetPlayerDataTable(player).then(({ jerryCanWeaponData }) => {
+                        if(!jerryCanWeaponData) return this.logger.Warn('NO jerryCanWeaponData');
+                        emitNet(EventName('PlayerJerryCanUpdated'), player, jerryCanWeaponData);
+                        if((jerryCanWeaponData.petrol||0) + (jerryCanWeaponData.solvent||0) == 0) this.playerService.Notification(player, 'Jerry can is ~b~empty~w~.');
+                    });
+                }
+            }
+        }
+        this.pedsWeaponCache = nextCache;
     }
 }

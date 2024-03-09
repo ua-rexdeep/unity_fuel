@@ -30,4 +30,9 @@ export class UserInterface {
         this.NUI('update', { fuelCost, fuelTank });
     }
 
+    ShowNotification(text: string) {
+        SetNotificationTextEntry('STRING');
+        AddTextComponentString(text);
+        DrawNotification(false, false);
+    }
 }

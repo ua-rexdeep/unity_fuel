@@ -18,10 +18,10 @@ export class RopeService {
         await LoadRopeTextures();
         const [ropeId] = AddRope(x, y, z, 
             0.0, 0.0, 0.0, 
-            3.0, 1, 
+            2.0, 4, 
             1000.0, 0.0, 1.0,
             false, false, false, 
-            1.0, false);
+            2.0, false);
         ActivatePhysics(ropeId);
 
         await Wait(50);

@@ -1,14 +1,12 @@
-import { Wait } from '../../utils';
+import { EventName, Wait } from '../../utils';
 import { GUIButton, GUIFloat, GUIPanel, GetGUI, ImGUI } from '../libs/imgui';
+import { UserInterface } from './userinterface';
 
 export class VehicleService {
     private DegradeFuelLevel = 0;
     public CurrentVehicleFuelLevel = 0;
     public CurrentVehicleMaxFuelLevel = 0;
-
-    constructor() {
-
-    }
+    private IndividualVehiclesConfig: Record<number, VehicleConfig> = {};
 
     GetDegradeFuelLevel() {
         return this.DegradeFuelLevel;
@@ -17,7 +15,21 @@ export class VehicleService {
         this.DegradeFuelLevel = level;
     }
 
+    GetAllVehicles(): number[] {
+        return GetGamePool('CVehicle');
+    }
+
     ProcessVehicleFuelState(vehicle: number) {
+        
+        // BUG: якщо на surge кудись врізатись, гра ставить її топливо на 0
+        if(GetVehicleFuelLevel(vehicle) == 0 && GetEntityModel(vehicle) == GetHashKey('surge')) {
+            
+            new UserInterface().ShowNotification('~b~[Surge] ~r~Hit detected. ~w~Vehicle turns off.');
+            
+            SetVehicleFuelLevel(vehicle, 20);
+            return;
+        }
+
         if(GetVehicleFuelLevel(vehicle) <= 20) {
             SetVehicleUndriveable(vehicle, false);
 
@@ -43,25 +55,26 @@ export class VehicleService {
         levelPanel.AddText('fuelLevel', 'Fuel level:');
         levelPanel.AddFloat('levelFloat', this.CurrentVehicleFuelLevel, 0, this.CurrentVehicleMaxFuelLevel, 1, { override: `%L / ${this.CurrentVehicleMaxFuelLevel}L` })
             .On('change', (_, value: number) => {
+                console.log('DEVSetFuelLevel', vehicleEntity, value, DoesEntityExist(vehicleEntity));
                 if(!DoesEntityExist(vehicleEntity)) return;
-                emitNet('DEVSetFuelLevel', NetworkGetNetworkIdFromEntity(vehicleEntity), value);
+                emitNet(EventName('DEVSetFuelLevel'), NetworkGetNetworkIdFromEntity(vehicleEntity), value);
             });
     }
 
-    VehicleFuelUpdated(vehicleEntity: number, fuel: number, maxFuel: number) {
+    VehicleFuelUpdated(vehicleEntity: number, fuel: number, maxFuel: number, badFuelContent: number) {
         const minSpeed = 10;
         const maxSpeed = GetVehicleEstimatedMaxSpeed(vehicleEntity);
+        const isBadFuelConsistency = (badFuelContent / fuel * 100) > 2; // TODO
 
         this.CurrentVehicleFuelLevel = fuel;
         this.CurrentVehicleMaxFuelLevel = maxFuel;
 
         GetGUI(`vehicle${vehicleEntity}`).then(async (gui) => {
-            // console.log('GUI', gui ? 'yes' : 'no');
             if(!gui) return;
-            const actionsPanel = await gui.GetComponentById<GUIPanel>('actionsPanel');
+            const mainPanel = await gui.GetComponentById<GUIPanel>('main');
             const button = await gui.GetComponentById<GUIButton>('openFuelControl');
             if(!button) {
-                actionsPanel.AddButton('openFuelControl', 'Fuel control');
+                mainPanel.AddButton('openFuelControl', 'Fuel control');
             } else {
                 button.On('click', async () => {
                     this.CreateDevFuelGUI(vehicleEntity);
@@ -83,17 +96,22 @@ export class VehicleService {
 
         if(fuel <= this.GetDegradeFuelLevel()) {
             SetVehicleMaxSpeed(vehicleEntity, (minSpeed + maxSpeed) * (fuel / this.GetDegradeFuelLevel()));
-            console.log('UPDATEDMAXSPEED', `degrade(${this.GetDegradeFuelLevel()})`,
-                GetVehicleEstimatedMaxSpeed(vehicleEntity) * 3.6, 
-                (minSpeed + maxSpeed) * (fuel / this.GetDegradeFuelLevel()));
 
             const rnd = (Math.random()*(100-0)+0);
-            if(fuel <= (this.GetDegradeFuelLevel()/2) && rnd > 55 && rnd < 60) {
+            if(fuel <= (this.GetDegradeFuelLevel()/2) && rnd > 55 && rnd < 60) { // шанс заглохнути
                 SetVehicleEngineOn(vehicleEntity, false, true, true);
             }
 
         } else {
             SetVehicleMaxSpeed(vehicleEntity, 200 / 3.6);
         }
+    }
+
+    GetVehicleRefillConfig(vehicleEntity: number): VehicleConfig | null {
+        return this.IndividualVehiclesConfig[GetEntityModel(vehicleEntity)];
+    }
+
+    SetIndividualVehiclesConfig(cfg) {
+        this.IndividualVehiclesConfig = Object.entries(cfg).reduce((acc, [k,v]) => ({ ...acc, [GetHashKey(k)]: v }), {});
     }
 }

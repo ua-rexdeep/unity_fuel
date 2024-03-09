@@ -1,89 +1,8 @@
 import { Logger } from '../../logger';
 import { EventName } from '../../utils';
+import { FuelPump } from '../models/pump';
+import { MySQLService } from './mysqlService';
 import { PlayerService } from './playerService';
-
-const VehicleClasses = {
-    [0]: {
-        essenceMultiplier: 0.7,
-        maxFuel: 25,
-    }, // Compacts
-    [1]: {
-        essenceMultiplier: 1.1,
-        maxFuel: 38,
-    }, // Sedans
-    [2]: {
-        essenceMultiplier: 1.7,
-        maxFuel: 64,
-    }, // SUVs
-    [3]: {
-        essenceMultiplier: 1.1,
-        maxFuel: 25,
-    }, // Coupes
-    [4]: {
-        essenceMultiplier: 1.5,
-        maxFuel: 55,
-    }, // Muscle
-    [5]: {
-        essenceMultiplier: 1.3,
-        maxFuel: 55,
-    }, // Sports Classics
-    [6]: {
-        essenceMultiplier: 1.5,
-        maxFuel: 55,
-    }, // Sports
-    [7]: {
-        essenceMultiplier: 1.5,
-        maxFuel: 55,
-    }, // Super
-    [8]: {
-        essenceMultiplier: 0.6,
-        maxFuel: 10,
-    }, // Motorcycles
-    [9]: {
-        essenceMultiplier: 1.2,
-        maxFuel: 64,
-    }, // Off-road
-    [10]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 100,
-    }, // Industrial
-    [11]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 64,
-    }, // Utility
-    [12]: {
-        essenceMultiplier: 1.2,
-        maxFuel: 64,
-    }, // Vans
-    [14]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 64,
-    }, // Boats
-    [15]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 200,
-    }, // Helicopters
-    [16]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 200,
-    }, // Planes
-    [17]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 64,
-    }, // Service
-    [18]: {
-        essenceMultiplier: 1.0,
-        maxFuel: 64,
-    }, // Emergency
-    [19]: {
-        essenceMultiplier: 1.9,
-        maxFuel: 64,
-    }, // Military
-    [20]: {
-        essenceMultiplier: 1.8,
-        maxFuel: 64,
-    }, // Commercial
-};
 
 type VehicleData = { 
     fuel: number, 
@@ -91,31 +10,74 @@ type VehicleData = {
     refuelInterval: NodeJS.Timeout | null,
     totalRefilled: number,
     playerRefilling: number,
+    badFuelContent: number,
+    gasPump: FuelPump | null,
 };
 
 export class FuelEssenceService {
     private readonly logger = new Logger('FuelEssenceService');
-    private Vehicles: Record<string, VehicleData> = {};
-    private EssenceTable: EssenceTable = {};
+    private Vehicles: Record<string, VehicleData> = {}; // cache. видаляє позиції, якщо транспорту більше не існує(ProcessVehiclesFuelEssence)
+    private VehiclesRequests: Record<string, (...any) => void> = {};
+    private EssenceTable: EssenceTable = {}; // кoнфігурація щодо розходу топлива відносно швидкості
+    private VehicleClassesData: Record<number, VehicleConfig> = {}; // кoнфігурація щодо розходу топлива відносно швидкості
+    private VehicleIndividualData: Record<number, VehicleConfig> = {}; // кoнфігурація щодо розходу топлива відносно швидкості для індивіальних моделей
+    private readonly queries: {
+        SaveFuelForVehicle: (variables: { fuel: number; plate: string; }) => Promise<void>,
+        FetchVehicleFuel: (variables: { plate: string; }) => Promise<{ fuelLevel: number; }[]>
+    };
     constructor(
         private readonly vRP: vRPServerFunctions, 
         private readonly vRPClient: vRPClientFunctions,
         private readonly playerService: PlayerService,
-    ){}
+        private readonly MySQL: MySQLService,
+    ){
+        this.queries = {
+            SaveFuelForVehicle: MySQL.Command<{ fuel: number, plate: string }>('update vrp_user_vehicles set `fuelLevel` = @fuel where `vehicle_plate` = @plate;'),
+            FetchVehicleFuel: MySQL.Command<{ plate: string }, { fuelLevel: number }>('select `fuelLevel` from vrp_user_vehicles where `vehicle_plate` = @plate;'),
+        };
+        const AlterFuelColumn = MySQL.Command('ALTER TABLE vrp_user_vehicles ADD COLUMN fuelLevel FLOAT NOT NULL DEFAULT 0');
 
-    AddVehicleAsPlayerVehicle(vehicleNet: number, vehicleClass: number, startFuelLevel: number) {
+        this.MySQL.IsTableColumnExists('vrp_user_vehicles', 'fuelLevel').then((exists) => {
+            if(!exists) AlterFuelColumn();
+        });
+    }
+
+    AddVehicleToCache(vehicleNet: number, vehicleClass: number, startFuelLevel: number) {
         if(!Object.keys(this.Vehicles).includes(vehicleNet.toString())) {
-            this.logger.Log('Added new vehicle as player vehicle', vehicleNet, vehicleClass, startFuelLevel);
+            this.logger.Log('Added new vehicle in cache', vehicleNet, vehicleClass, startFuelLevel);
             this.Vehicles[vehicleNet] = {
-                fuel: startFuelLevel, // startFuelLevel
+                fuel: 2, // startFuelLevel
                 class: vehicleClass,
                 refuelInterval: null,
                 totalRefilled: 0,
                 playerRefilling: 0,
+                badFuelContent: 0,
+                gasPump: null,
             };
+
+            this.queries.FetchVehicleFuel({ plate: GetVehicleNumberPlateText(NetworkGetEntityFromNetworkId(vehicleNet)) }).then(([vehicle_row]) => {
+                if(!vehicle_row) this.SetVehicleFuel(vehicleNet, Math.random()*(20-5)+5);
+                else vehicle_row.fuelLevel;
+            });
         }
 
+        if(this.VehiclesRequests[vehicleNet]) {
+            this.VehiclesRequests[vehicleNet](this.Vehicles[vehicleNet]);
+            delete this.VehiclesRequests[vehicleNet];
+        }
+        
+
         return this.Vehicles[vehicleNet];
+    }
+
+    GetVehicleCache(vehicleNet: number) {
+        return new Promise((done: (_: VehicleData) => void) => {
+            if(this.Vehicles[vehicleNet]) done(this.Vehicles[vehicleNet]);
+            else {
+                this.VehiclesRequests[vehicleNet] = done;
+                emitNet(EventName('RequestVehicleInfo'), NetworkGetEntityOwner(NetworkGetEntityFromNetworkId(vehicleNet)), vehicleNet);
+            }
+        });
     }
 
     IsVehicleInMemory(vehicleNet: number) {
@@ -133,13 +95,31 @@ export class FuelEssenceService {
         return this.Vehicles[vehicleNet].fuel;
     }
 
+    GetVehicleBadFuelContent(vehicleNet: number) {
+        return this.Vehicles[vehicleNet].badFuelContent;
+    }
+    SetVehicleBadFuelContent(vehicleNet: number, badFuelContent: number) {
+        this.Vehicles[vehicleNet].badFuelContent = badFuelContent;
+        this.OnVehicleFuelUpdated(vehicleNet);
+    }
+
+    SetVehicleGasPump(vehicleNet: number, fuelPump: FuelPump) {
+        this.Vehicles[vehicleNet].gasPump = fuelPump;
+    }
+
     GetVehicleMaxFuel(vehicleNet: number): number {
         const vehicleClass = this.GetVehicleFuelData(vehicleNet);
         return vehicleClass.maxFuel;
     }
 
     GetVehicleFuelData(vehicleNet: number) {
-        return VehicleClasses[this.Vehicles[vehicleNet].class];
+        const vehicleModel = GetEntityModel(NetworkGetEntityFromNetworkId(vehicleNet));
+        return this.VehicleIndividualData[vehicleModel] || this.VehicleClassesData[this.Vehicles[vehicleNet].class];
+    }
+
+    IsVehicleElectic(vehicleNet) {
+        const vehicleModel = GetEntityModel(NetworkGetEntityFromNetworkId(vehicleNet));
+        return this.VehicleIndividualData[vehicleModel]?.isElectic || false;
     }
 
     GetVehicleRefillingData(vehicleNet: number) {
@@ -149,6 +129,7 @@ export class FuelEssenceService {
             inProgress: vehicleData.refuelInterval != null,
             playerRefilling: vehicleData.playerRefilling,
             totalRefilled: vehicleData.totalRefilled,
+            gasPump: vehicleData.gasPump,
         };
     }
 
@@ -166,13 +147,22 @@ export class FuelEssenceService {
         const vehicleMaxFuel = this.GetVehicleMaxFuel(vehicleNet);
         const vehicleFuel = this.GetVehicleFuel(vehicleNet);
 
-        if(vehicleData.refuelInterval != null) {
+        if(vehicleData.refuelInterval != null) { // already refilling, so interrupt it
             this.InterruptVehicleRefill(vehicleNet, true);
+            return;
+        }
+
+        if(vehicleMaxFuel - vehicleFuel! < 1) {
+            this.vRPClient.notify(player, '~r~Vehicle dont need to refilling.');
+            return;
         }
 
         this.vRP.prompt(player, 'Refill', (vehicleMaxFuel - vehicleFuel!).toFixed(1), (player, value) => {
             try {
                 const fuelToRefill = parseFloat(value) * 0.997;
+
+                if(isNaN(fuelToRefill) || fuelToRefill == 0) return;
+                if(fuelToRefill < 0) return this.vRPClient.notify(player, '~r~Fuel level must be more then 0.');
 
                 vehicleData.playerRefilling = player;
                 vehicleData.totalRefilled = 0;
@@ -180,11 +170,10 @@ export class FuelEssenceService {
                     this.ProcessVehicleRefill(vehicleNet, fuelToRefill);
                 }, 100);
 
-
             } catch(e) {
                 this.vRPClient.notify(player, '~r~Wrong input.');
             }
-            console.log('REFUEL', vehicleNet, value);
+            return;
         });
 
         return null;
@@ -194,8 +183,8 @@ export class FuelEssenceService {
     ProcessVehicleRefill(vehicleNet: number, fuelToRefill: number) {
         const vehicleData = this.Vehicles[vehicleNet];
         const vehicleMaxFuel = this.GetVehicleMaxFuel(vehicleNet);
-        this.logger.Log('RefillProcess maxFuel:', vehicleMaxFuel);
-        const rndToAdd = (Math.random()*(3-1)+1) / 10;
+        this.logger.Log('RefillProcess maxFuel:', vehicleMaxFuel, vehicleData.gasPump?.IsElectric());
+        const rndToAdd = (Math.random()*(3-1)+1) / (vehicleData.gasPump?.IsElectric() ? 100 : 10);
         this.logger.Log('RefillProcess', `${vehicleData.fuel} + ${rndToAdd} > ${vehicleMaxFuel}`);
 
         if(vehicleData.fuel + rndToAdd > vehicleMaxFuel) { // next fuel value bigger then max vehicle fuel
@@ -242,13 +231,23 @@ export class FuelEssenceService {
                 continue;
             }
 
-            let essence = 0;
-            if(GetIsVehicleEngineRunning(vehicleEntity)) {
+            const { essenceMultiplier } = this.GetVehicleFuelData(+vehicleNet);
+            const vehicleMaxFuel = this.GetVehicleMaxFuel(+vehicleNet);
+            
+            if(vehicleData.fuel > vehicleMaxFuel) {
+                vehicleData.fuel = vehicleMaxFuel;
+            }
+
+            let essence = 0; // кількість топлива, яка в кінці процедури буде відмінусована
+            const isEngineRunning = GetIsVehicleEngineRunning(vehicleEntity);
+            if(isEngineRunning) {
                 const speed = GetEntitySpeed(vehicleEntity) * 3.6;
-                essence = this.GetSpeedEssence(speed);
+                essence = this.GetSpeedEssence(speed); // розхід топлива розраховується на основі швидкості та таблиці конфігурації
             }
             
-            if(essence > 0 && vehicleData.fuel > 0) {
+            essence = essence * essenceMultiplier; // мультиплікатор відносно до моделі/класу транспорту
+
+            if(essence > 0 && (vehicleData.fuel > 0 || isEngineRunning)) {
                 vehicleData.fuel -= essence;
                 if(vehicleData.fuel < 0) vehicleData.fuel = 0;
 
@@ -273,12 +272,24 @@ export class FuelEssenceService {
     OnVehicleFuelUpdated(vehicleNet: number, driverPlayer: number | null = null) {
         const vehicleEntity = NetworkGetEntityFromNetworkId(vehicleNet);
         const vehicleData = this.Vehicles[vehicleNet];
-        const vehicleMaxFuelLevel = this.GetVehicleMaxFuel(+vehicleNet);
-        emitNet(EventName('VehicleFuelUpdated'), driverPlayer || NetworkGetEntityOwner(vehicleEntity), +vehicleNet, vehicleData.fuel, vehicleMaxFuelLevel);
+        const vehicleMaxFuelLevel = this.GetVehicleMaxFuel(vehicleNet);
+        const badFuelContent = this.GetVehicleBadFuelContent(vehicleNet);
+        emitNet(EventName('VehicleFuelUpdated'), driverPlayer || NetworkGetEntityOwner(vehicleEntity), +vehicleNet, vehicleData.fuel, vehicleMaxFuelLevel, badFuelContent);
     }
 
     SetEssenceTable(table: EssenceTable) {
         this.EssenceTable = table;
+    }
+
+    SetVehiclesIndividualData(table: Record<string, VehicleConfig>) {
+        this.VehicleIndividualData = Object.entries(table).reduce((acc, [modelName, data]: [string, VehicleConfig]) => {
+            acc[GetHashKey(modelName)] = data;
+            return acc;
+        }, {});
+    }
+
+    SetVehicleClassesData(table: Record<number, VehicleConfig>) {
+        this.VehicleClassesData = table;
     }
 
     // !KMH required

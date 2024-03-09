@@ -11,7 +11,11 @@ client_scripts {
 }
   
 server_scripts {
-    'config.lua',
+    'config/essence.lua',
+    'config/vehicles.lua',
+    'config/pumps.lua',
+    'config/script.lua',
+
     'dist/server.js'
 }
 

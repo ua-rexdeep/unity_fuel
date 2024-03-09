@@ -1,4 +1,4 @@
-import { EventName, Wait } from '../utils';
+import { EventName } from '../utils';
 import { FuelStationHandler } from './handlers/fuelStationHandler';
 import { FuelEssenceService } from './services/fuelEssenceService';
 import { FuelStationService } from './services/fuelStationService';
@@ -12,8 +12,8 @@ const vRPClient = ClientAdapter.getInterface('vRP', 'vRP');
 
 const MySQL = new MySQLService();
 const playerService = new PlayerService(vRP, vRPClient);
-const fuelEssenceService = new FuelEssenceService(vRP, vRPClient, playerService);
-const fuelStationService = new FuelStationService(vRP, vRPClient, MySQL);
+const fuelEssenceService = new FuelEssenceService(vRP, vRPClient, playerService, MySQL);
+const fuelStationService = new FuelStationService(vRP, vRPClient, playerService, MySQL, fuelEssenceService);
 
 new FuelStationHandler(fuelStationService, fuelEssenceService, playerService);
 

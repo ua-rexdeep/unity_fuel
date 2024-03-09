@@ -5,6 +5,8 @@ import { FuelStationService } from '../services/fuelStationService';
 import { PlayerService } from '../services/playerService';
 
 export class FuelStationHandler {
+    private readonly logger = new Logger('FuelStationHandler');
+    private isElectricStationsSpawnLocked = false;
     constructor(
         private readonly service: FuelStationService,
         private readonly essenceService: FuelEssenceService,
@@ -13,12 +15,16 @@ export class FuelStationHandler {
         onNet(EventName('NozzleCreated'), this.OnNozzleCreated.bind(this));
         onNet(EventName('PickupNozzle'), this.OnPickupNozzle.bind(this));
         onNet(EventName('InsertNozzleIntoVehicle'), this.OnInsertNozzleIntoVehicle.bind(this));
-        onNet(EventName('PlayerEnterVehicle'), this.PlayerEnterVehicle.bind(this));
-        onNet(EventName('RefuelVehicle'), this.RefuelVehicle.bind(this));
+        onNet(EventName('SendVehicleInfo'), this.SendVehicleInfo.bind(this));
+        onNet(EventName('PlayerInteractWithGasWorker'), this.OnPlayerInteractGasWorker.bind(this));
         onNet(EventName('RequestDetachNozzle'), this.RequestDetachNozzle.bind(this));
+        onNet(EventName('PlayerEnterVehicle'), this.OnPlayerEnterVehicle.bind(this));
 
         onNet('proptInt:OnPlayerRegisterObject', this.OnPlayerRegisterObject.bind(this));
         onNet(EventName('DEVSetFuelLevel'), this.DEVSetFuelLevel.bind(this));
+        onNet(EventName('UpdatePlayerJerryCanData'), this.UpdatePlayerJerryCanData.bind(this));
+        onNet(EventName('UpdatePlayerVehicleRefillJerryCan'), this.UpdatePlayerVehicleRefillJerryCan.bind(this));
+        on('vRP:playerJoin', this.OnPlayerJoin.bind(this));
 
         on(EventName('Config'), this.OnConfigReceived.bind(this));
 
@@ -28,61 +34,48 @@ export class FuelStationHandler {
     }
 
     private DEVSetFuelLevel(vehicleNet: number, fuel: number) {
+        console.log('DEVSetFuelLevel', vehicleNet, fuel);
         this.essenceService.SetVehicleFuel(vehicleNet, fuel);
     }
 
     private ACTION_ID = 0;
-    private async OnPlayerUseFuelPump(pumpId: string, hosepipeIndex: number, pumpNetId: number, slotWorldCoords: number[], viewDisplayWorldCoords: VectorArray) {
+    private async OnPlayerUseFuelPump(pumpId: string, hosepipeIndex: number, pumpNetId: number, slotWorldCoords: VectorArray, viewDisplayWorldCoords: VectorArray) {
         this.ACTION_ID++;
         const logger = new Logger('Handler -> PlayerUserFuelPump', pumpId, `S(${this.ACTION_ID})`);
 
         const source = global.source;
 
         const nearestStation = this.service.GetPlayerNearestStation(source);
-        const pumpStation = this.service.GetPumpStation(pumpId);
-        const pumpData = this.service.GetPumpData(pumpId);
+        const pumpData = nearestStation?.GetPumpById(pumpId);
         const isAdmin = await this.playerService.IsPlayerAdmin(source);
 
-        if(pumpStation && pumpData) {
+        if(nearestStation && pumpData) {
 
             hosepipeIndex--;
-
-            if(!pumpData.hosepipes[hosepipeIndex]) {
-                pumpData.hosepipes[hosepipeIndex] = {
-                    broken: false,
-                    fuelProcess: null,
-                    inVehicle: null,
-                    nozzleEntity: null,
-                    pickedUpPlayer: null,
-                    slotEntity: null,
-                    worldCoords: Vector3.fromArray(slotWorldCoords),
-                    viewDisplayWorldCoords: Vector3.fromArray(viewDisplayWorldCoords),
-                };
-            }
             
-            const hosepipe = this.service.GetHosepipeData(pumpId, hosepipeIndex);
-            if(!hosepipe) throw new Error('No hosepipe', { cause: { pumpId, hosepipeIndex} });
-            // logger.Log('Hosepipe', hosepipe);
+            let hosepipe = pumpData.GetHosepipe(hosepipeIndex);
+            if(!hosepipe) hosepipe = await pumpData.CreateHosepipe(hosepipeIndex, Vector3.fromArray(slotWorldCoords), Vector3.fromArray(viewDisplayWorldCoords));
+            logger.Log('Hosepipe', hosepipe ? 'exists' : 'notexists');
 
-            if(hosepipe.fuelProcess != null) return this.playerService.Notification(source, '~r~Refuel in progress');
-            if(hosepipe.inVehicle || (hosepipe.pickedUpPlayer != null && hosepipe.pickedUpPlayer != source)) return this.playerService.Notification(source, '~r~Hosepipe not installed into pump');
-            if(pumpData.busy) return this.playerService.Notification(source, '~r~Try one more time');
+            // return this.playerService.Notification(source, '~r~Refuel in progress'); TODO:
+            if(hosepipe.GetVehicle() || (hosepipe.GetPlayer() != null && hosepipe.GetPlayer() != source)) return this.playerService.Notification(source, '~r~Hosepipe not installed into pump');
+            if(pumpData.GetBusy()) return this.playerService.Notification(source, '~r~Try one more time');
 
-            pumpData.busy = this.ACTION_ID;
-            if(hosepipe.pickedUpPlayer == source) {                
-                this.service.DeleteNozzle(pumpId, hosepipeIndex);
+            pumpData.SetBusy(this.ACTION_ID);
+            if(hosepipe.GetPlayer() == source) {                
+                hosepipe.DeleteNozzle();
                 this.playerService.OnPlayerDropNozzle(source);
-                pumpData.netEntity = await this.service.ReplacePumpObject(pumpId, pumpData.netEntity!, hosepipeIndex);
+                pumpData.UpdatePumpModelBySlot(hosepipeIndex);
                 
-                pumpData.busy = false;
+                pumpData.SetBusy(false);
             } else {
                 const playerHosepipe = this.service.GetHosepipeIsPlayerHold(source);
-                if(hosepipe.broken) {
-                    pumpData.busy = false;
+                if(hosepipe.IsBroken()) {
+                    pumpData.SetBusy(false);
                     return this.playerService.Notification(source, '~r~Hosepipe broken. Try another');
                 }
                 if(playerHosepipe) {
-                    pumpData.busy = false;
+                    pumpData.SetBusy(false);
                     return this.playerService.Notification(source, '~r~You are already hold another hosepipe');
                 }
                 
@@ -121,13 +114,13 @@ export class FuelStationHandler {
 
         const hosepipe = this.service.GetHosepipeFromNozzle(entityNet);
         if(!hosepipe) throw new Error('Hosepipe is null');
-        if(hosepipe.inVehicle) {
-            const refilling = this.essenceService.GetVehicleRefillingData(hosepipe.inVehicle);
-            if(refilling.inProgress) this.essenceService.InterruptVehicleRefill(hosepipe.inVehicle, true);
-            this.essenceService.ResetVehicleRefillingData(hosepipe.inVehicle);
+        if(hosepipe.GetVehicle()) {
+            const refilling = this.essenceService.GetVehicleRefillingData(hosepipe.GetVehicle()!);
+            if(refilling.inProgress) this.essenceService.InterruptVehicleRefill(hosepipe.GetVehicle()!, true);
+            this.essenceService.ResetVehicleRefillingData(hosepipe.GetVehicle()!);
         }
 
-        this.service.SetHosepipePlayerHold(global.source, entityNet);
+        hosepipe.SetPlayer(source);
         this.playerService.OnPlayerHoldsNozzle(global.source, entityNet);
     }
 
@@ -136,23 +129,31 @@ export class FuelStationHandler {
         const source = global.source;
         const hosepipe = this.service.GetHosepipeIsPlayerHold(source);
         if(!hosepipe) throw new Error('No hosepipe', { cause: { player: source } });
-        if(!hosepipe.nozzleEntity) throw new Error('No nozzle entity for hosepipe', { cause: { player: source, hosepipe } });
+        if(!hosepipe.GetNozzleNetId()) throw new Error('No nozzle entity for hosepipe', { cause: { player: source, hosepipe } });
         if(vehicleNet == 0) throw new Error(`Vehicle ${vehicleNet} is not networked`);
 
         if(this.service.GetHosepipeFromVehicle(vehicleNet)) {
             return this.playerService.Notification(source, '~r~Some hosepipe already in vehicle');
         }
 
-        this.service.SetHosepipeInVehicle(hosepipe.nozzleEntity, vehicleNet);
+        await this.essenceService.GetVehicleCache(vehicleNet);
+        
+        if(this.essenceService.IsVehicleElectic(vehicleNet) != hosepipe.GetPump().IsElectric()) {
+            this.playerService.Notification(source, '~r~Invalid plug slot.');
+            return;
+        }
+
+        hosepipe.SetVehicle(vehicleNet);
+        this.essenceService.SetVehicleGasPump(vehicleNet, hosepipe.GetPump());
         this.playerService.SetPlayerLastVehicle(source, vehicleNet);
         this.playerService.OnPlayerDropNozzle(source);
 
         const vehicleOwner = NetworkGetEntityOwner(NetworkGetEntityFromNetworkId(vehicleNet));
         if(vehicleOwner != source) {
-            emitNet(EventName('RequestDetachNozzle'), source, hosepipe.nozzleEntity);
-            emitNet(EventName('InsertNozzleIntoVehicle'), vehicleOwner, hosepipe.nozzleEntity, vehicleNet, fuelCupOffset);
+            emitNet(EventName('RequestDetachNozzle'), source, hosepipe.GetNozzleNetId());
+            emitNet(EventName('InsertNozzleIntoVehicle'), vehicleOwner, hosepipe.GetNozzleNetId(), vehicleNet, fuelCupOffset);
         } else {
-            emitNet(EventName('InsertNozzleIntoVehicle'), source, hosepipe.nozzleEntity, vehicleNet, fuelCupOffset);
+            emitNet(EventName('InsertNozzleIntoVehicle'), source, hosepipe.GetNozzleNetId(), vehicleNet, fuelCupOffset);
         }
     }
 
@@ -162,28 +163,59 @@ export class FuelStationHandler {
         this.service.ClientObjectCreated(global.source, propNetId, model, rID);
     }
     
-    private async PlayerEnterVehicle(vehicleNet, vehicleClass, startFuelLevel) {
+    private async SendVehicleInfo(vehicleNet, vehicleClass, startFuelLevel) {
         this.ACTION_ID++;
-        // this.playerService.SetPlayerLastVehicle(global.source, vehicleNet);
-        const vehicleData = this.essenceService.AddVehicleAsPlayerVehicle(vehicleNet, vehicleClass, startFuelLevel);
-        console.log('plen', EventName('VehicleFuelUpdated'), global.source, vehicleNet, vehicleData.fuel);
-        emitNet(EventName('VehicleFuelUpdated'), global.source, vehicleNet, vehicleData.fuel, this.essenceService.GetVehicleMaxFuel(vehicleNet));
+        console.log('SendVehicleInfo', 'received', vehicleNet);
+        this.essenceService.AddVehicleToCache(vehicleNet, vehicleClass, startFuelLevel);
     }
 
-    private async RefuelVehicle(vehicleNet) {
+    private async OnPlayerEnterVehicle(vehicleNet) {
+        const source = global.source;
+        const vehicleData = await this.essenceService.GetVehicleCache(vehicleNet);
+        this.essenceService.OnVehicleFuelUpdated(vehicleNet, source);
+    }
+
+    private async OnPlayerInteractGasWorker() {
         this.ACTION_ID++;
-        this.essenceService.RequestVehicleRefuel(global.source, vehicleNet);
+        this.service.OpenWorkerInteractMenu(global.source, this.playerService.GetPlayerLastVehicle(global.source));
     }
 
     private OnConfigReceived(config: ServerConfig) {
         this.ACTION_ID++;
         this.essenceService.SetEssenceTable(config.EssenceTable);
+        this.essenceService.SetVehicleClassesData(config.VehicleClassesData);
+        this.essenceService.SetVehiclesIndividualData(config.IndividualVehicleData);
+        this.service.SetReplacePumpConfig(config.PumpsReplaceData);
     }
 
     private async RequestDetachNozzle(nozzleNet: number){
+        this.ACTION_ID++;
         const entityId = NetworkGetEntityFromNetworkId(nozzleNet);
         if(entityId == 0) throw new Error(`Entity(${nozzleNet}) not exists`);
         emitNet(EventName('RequestDetachNozzle'), NetworkGetEntityOwner(entityId), nozzleNet);
     }
 
+    private async UpdatePlayerJerryCanData(data: { petrol?: number, solvent?: number }) {
+        this.playerService.UpdatePlayerDataTable(global.source, {
+            jerryCanWeaponData: data,
+        });
+    }
+
+    private async UpdatePlayerVehicleRefillJerryCan(vehicleNet: number, data: { petrol: number, solvent: number }) {
+        await this.essenceService.GetVehicleCache(vehicleNet);
+        if(data.petrol) {
+            this.essenceService.SetVehicleFuel(vehicleNet, this.essenceService.GetVehicleFuel(vehicleNet)! + data.petrol);
+        }
+        if(data.solvent) {
+            this.essenceService.SetVehicleBadFuelContent(vehicleNet, this.essenceService.GetVehicleBadFuelContent(vehicleNet) + data.solvent);
+        }
+    }
+
+    private async OnPlayerJoin(_: void, player: number) {
+        this.logger.Log('OnPlayerJoin', player);
+        if(!this.isElectricStationsSpawnLocked) {
+            this.isElectricStationsSpawnLocked = true;
+            this.service.CreateElecticStations(player);
+        }
+    }
 }

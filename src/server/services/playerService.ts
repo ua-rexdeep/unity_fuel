@@ -27,7 +27,7 @@ export class PlayerService {
 
     SetPlayerLastVehicle(player: number, vehicle: number) {
         this.playersVehicle[player] = vehicle;
-        emitNet(EventName('LastVehicleUpdated'), player, vehicle);
+        // emitNet(EventName('LastVehicleUpdated'), player, vehicle); // @unused
     }
 
     GetPlayerLastVehicle(player: number) {
@@ -43,8 +43,8 @@ export class PlayerService {
     }
 
     GetPlayerByPed(ped: number) {
-        for(const player of getPlayers()) {
-            if(GetPlayerPed(player) == ped) return +player;
+        for(const player of this.GetPlayers()) {
+            if(GetPlayerPed(player) == ped) return player;
         }
         return null;
     }
@@ -59,5 +59,19 @@ export class PlayerService {
 
     GetPlayers() {
         return getPlayers().map((player) => +player);
+    }
+
+    Prompt(player: number, title: string, placeholder: string) {
+        return new Promise((done) => this.vRP.prompt(player, title, placeholder, done));
+    }
+
+    async GetPlayerDataTable(player: number) {
+        const userid = await this.vRP.getUserId(player);
+        return this.vRP.getUserDataTable(userid);
+    }
+
+    async UpdatePlayerDataTable(player: number, table: Partial<UserDataTable>) {
+        const userid = await this.vRP.getUserId(player);
+        return this.vRP.updateUserDataTable(userid, table);
     }
 }

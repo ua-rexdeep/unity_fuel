@@ -1,5 +1,6 @@
 import { EventName } from '../utils';
 import { HosepipeService } from './services/hosepipe';
+import { JerryCanService } from './services/jerrycan';
 import { RopeService } from './services/ropes';
 import { UserInterface } from './services/userinterface';
 import { VehicleService } from './services/vehicle';
@@ -10,6 +11,7 @@ export class Handler {
         private readonly ropeService: RopeService,
         private readonly vehicleService: VehicleService,
         private readonly UIService: UserInterface,
+        private readonly JerryCanService: JerryCanService,
     ){
 
         onNet(EventName('GiveNozzleToPlayer'), this.GiveNozzleToPlayer.bind(this));
@@ -26,6 +28,8 @@ export class Handler {
 
         onNet(EventName('ClientConfig'), this.OnConfigReceived.bind(this));
         onNet(EventName('RequestDetachNozzle'), this.RequestDetachNozzle.bind(this));
+        onNet(EventName('RequestVehicleInfo'), this.RequestVehicleInfo.bind(this));
+        onNet(EventName('PlayerJerryCanUpdated'), this.OnPlayerJerryCanUpdated.bind(this));
     }
 
     private async GiveNozzleToPlayer(pumpNet: number, pumpId: number, hosepipeIndex: number, offset: [number, number, number]) {
@@ -56,8 +60,7 @@ export class Handler {
     }
 
     private InsertNozzleIntoVehicle(nozzleEntity: number, vehicleNet: number, fuelCupOffset) {
-        console.log('insert', fuelCupOffset);
-        this.hosepipeService.AttachToVehicle(nozzleEntity, vehicleNet, fuelCupOffset);
+        this.hosepipeService.AttachToVehicle(nozzleEntity, vehicleNet, fuelCupOffset, this.vehicleService.GetVehicleRefillConfig(NetworkGetEntityFromNetworkId(vehicleNet)));
     }
 
     private OnHosepipeSlotBrokenByVehicle(slotEntityNet: number) {
@@ -66,7 +69,7 @@ export class Handler {
         ActivatePhysics(slotEntity);
     }
 
-    private VehicleFuelUpdated(vehicleNet: number, fuel: number, maxFuel: number) {
+    private VehicleFuelUpdated(vehicleNet: number, fuel: number, maxFuel: number, badFuelContent: number) {
         const playerPed = GetPlayerPed(-1);
         const playerVehicle = GetVehiclePedIsIn(playerPed, false);
         const vehicleEntity = NetworkGetEntityFromNetworkId(vehicleNet);
@@ -74,7 +77,7 @@ export class Handler {
 
         SetVehicleFuelLevel(vehicleEntity, fuel == 0 ? 20 : 50);
         if(playerVehicle == vehicleEntity) {
-            this.vehicleService.VehicleFuelUpdated(vehicleEntity, fuel, maxFuel);
+            this.vehicleService.VehicleFuelUpdated(vehicleEntity, fuel, maxFuel, badFuelContent);
         } else {
             this.vehicleService.ProcessVehicleFuelState(vehicleEntity);
         }
@@ -93,6 +96,7 @@ export class Handler {
 
     private OnConfigReceived(config: ClientConfig) {
         this.vehicleService.SetDegradeFuelLevel(config.MinFuelForDegrade);
+        this.vehicleService.SetIndividualVehiclesConfig(config.IndividualVehicleData);
     }
 
     private RequestDetachNozzle(nozzleNet: number) {
@@ -100,6 +104,15 @@ export class Handler {
             const entity = NetworkGetEntityFromNetworkId(nozzleNet);
             DetachEntity(entity, true, true);
         } else throw new Error(`EntityNet(${nozzleNet}) not exists`);
+    }
+
+    private RequestVehicleInfo(vehicleNet: number) {
+        const vehicle = NetworkGetEntityFromNetworkId(vehicleNet);
+        emitNet(EventName('SendVehicleInfo'), vehicleNet, GetVehicleClass(vehicle), GetVehicleFuelLevel(vehicle));
+    }
+
+    private OnPlayerJerryCanUpdated(jerryCanData: { petrol?: number, solvent?: number }) {
+        this.JerryCanService.UpdateData(jerryCanData);
     }
 
 }

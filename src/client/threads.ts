@@ -1,9 +1,16 @@
 import { Logger } from '../logger';
-import { EventName, Wait } from '../utils';
+import { DrawText3D, EventName, Wait, vDist } from '../utils';
 import { HosepipeService } from './services/hosepipe';
+import { JerryCanService } from './services/jerrycan';
 import { RopeService } from './services/ropes';
 import { UserInterface } from './services/userinterface';
 import { VehicleService } from './services/vehicle';
+
+if(!global.LoadAnimDict) {
+    global.LoadAnimDict = (_: string)  => {
+        console.error('NO LoadAnimDict FUNC');
+    };
+}
 
 export class Threads {
     private readonly logger = new Logger('Threads');
@@ -15,6 +22,7 @@ export class Threads {
         private readonly ropeService: RopeService,
         private readonly vehicleService: VehicleService,
         private readonly UIService: UserInterface,
+        private readonly JerryCanService: JerryCanService,
     ){
 
         if(process.env.NODE_ENV == 'development') {
@@ -23,6 +31,7 @@ export class Threads {
         }
         this.Create('VehicleEssence', this.VehicleEssence.bind(this), 100);
         this.Create('DrawFuelLevel', this.DrawFuelLevel.bind(this));
+        this.Create('JerryCanFire', this.JerryCanFire.bind(this));
     }
 
     private Create(name: string, func: () => void, interval?: number) {
@@ -52,7 +61,7 @@ export class Threads {
                     SetEntityAsMissionEntity(object, true, true);
                     DeleteEntity(object);
                 }
-                if(GetEntityModel(object) == GetHashKey('prop_cs_fuel_nozle')) {
+                if(GetEntityModel(object) == GetHashKey('prop_cs_electro_nozle')) {
                     logger.Log('', object);
                     logger.Log(`Object(${object}) Net(${NetworkGetNetworkIdFromEntity(object)})`);
                     this.hosepipeService.Delete(object);
@@ -61,22 +70,73 @@ export class Threads {
         }
     }
 
+    private isVehicleEngineRunning = false;
     private async VehicleEssence() {
         const playerPed = GetPlayerPed(-1);
         const vehicle = GetVehiclePedIsIn(playerPed, false);
         if(vehicle) {
 
             if(this.lastVehicle != vehicle && GetPedInVehicleSeat(vehicle, -1) == playerPed) {
-                emitNet(EventName('PlayerEnterVehicle'), NetworkGetNetworkIdFromEntity(vehicle), GetVehicleClass(vehicle), GetVehicleFuelLevel(vehicle));
+                emitNet(EventName('PlayerEnterVehicle'), NetworkGetNetworkIdFromEntity(vehicle));
                 this.lastVehicle = vehicle;
             }
 
-            // console.log('TURNITOFF', GetVehicleFuelLevel(vehicle), GetIsVehicleEngineRunning(vehicle));
+            if(this.isVehicleEngineRunning == false && IsVehicleEngineOn(vehicle) == true) {
+                emitNet(EventName('PlayerEnterVehicle'), NetworkGetNetworkIdFromEntity(vehicle));
+            }
+            this.isVehicleEngineRunning = IsVehicleEngineOn(vehicle);
+
             this.vehicleService.ProcessVehicleFuelState(vehicle);
 
         } else if(this.lastVehicle) {
             this.lastVehicle = null;
+            this.isVehicleEngineRunning = false;
         }
+    }
+
+    count = 0;
+    private async JerryCanFire() {
+        const playerPed = GetPlayerPed(-1);
+        
+        if(GetSelectedPedWeapon(playerPed) == GetHashKey('WEAPON_PETROLCAN')) {
+            if(this.VehicleJerryCanRefill() || this.JerryCanService.GetContentAmount() == 0) DisablePlayerFiring(PlayerId(), true);
+            
+            SetPedAmmo(playerPed, GetHashKey('WEAPON_PETROLCAN'), 100);
+
+            const [offx, offy, offz] = GetWorldPositionOfEntityBone(playerPed, GetPedBoneIndex(playerPed, 57005));
+            DrawText3D(offx, offy, offz, this.JerryCanService.GetContentAmount() > 0 ? `${this.JerryCanService.GetContentAmount().toFixed(2)}L` : 'Empty');
+
+            if(IsPedShooting(playerPed)) {
+                this.count++;
+                if(this.count > 50) {
+                    this.JerryCanService.OnWeaponFire();
+                }
+                else if(this.count % 10 == 0) {
+                    emit('propInt::Debugger', {
+                        id: 'cm:1',
+                        text: `Firing ${this.count > 50 ? 'true' : 'delay'}`,
+                        entity: playerPed,
+                        left: 150,
+                        top: 300,
+                        customPosition: true,
+                    });
+                }
+                return;
+            }
+        }
+
+        if(this.count > 50) {
+            emitNet(EventName('UpdatePlayerJerryCanData'), this.JerryCanService.GetData());// updates server data about jerry can content
+        }
+        // emit('propInt::Debugger', {
+        //     id: 'cm:1',
+        //     text: `Stay ${this.JerryCanService.GetContentAmount()}`,
+        //     entity: playerPed,
+        //     left: 150,
+        //     top: 300,
+        //     customPosition: true,
+        // });
+        this.count = 0;
     }
 
     private progress_level = 0;
@@ -140,5 +200,75 @@ export class Threads {
             xunit: number,
             yunit: number,
         };
+    }
+
+    private IsJerryCanRefilling = false;
+    private refillCount = 0;
+    private refilledData = {};
+    private refilledVehicle: number | null = null;
+    private VehicleJerryCanRefill() {
+        let retval: 'NOTINRANGE' | 'INRANGE' | 'REFILL' = 'NOTINRANGE';
+        const playerPed = GetPlayerPed(-1);
+        const [px, py, pz] = GetEntityCoords(playerPed);
+        for(const vehicle of this.vehicleService.GetAllVehicles()) {
+            const [vx, vy, vz] = GetEntityCoords(vehicle);
+            const vehicleRefillConfig = this.vehicleService.GetVehicleRefillConfig(vehicle);
+            // console.log(`REFILL: ${vehicle} / ${vDist(px, py, pz, vx, vy, vz).toFixed(2)}`);
+            if(vehicleRefillConfig && vDist(px, py, pz, vx, vy ,vz) < 5.0) {
+                const { x: rx, y: ry, z: rz } = vehicleRefillConfig.refillNozzleOffset;
+                const [ worldX, worldY, worldZ ] = GetOffsetFromEntityInWorldCoords(vehicle, rx, ry, rz);
+                const [_, groundZ] = GetGroundZFor_3dCoord(worldX, worldY, worldZ, false);
+                DrawText3D(worldX, worldY, worldZ, `REFILL: ${vehicle} / ${groundZ} / ${vDist(px, py, pz, worldX, worldY ,groundZ).toFixed(2)}`);
+                if(vDist(px, py, pz, worldX, worldY ,groundZ) < 1.5) {
+                    if(IsDisabledControlPressed(1, 24) && this.JerryCanService.GetContentAmount() > 0) {
+                        (DrawMarker as any)(1, worldX, worldY, groundZ, 0, 0, 0, 0, 0, 0, 2.0, 2.0, 0.1, 0, 255, 0, 255);
+
+                        if(!this.IsJerryCanRefilling) {
+                            RequestAnimDict('weapon@w_sp_jerrycan');
+                            if(HasAnimDictLoaded('weapon@w_sp_jerrycan')) { 
+                                this.IsJerryCanRefilling = true;
+                                this.refilledVehicle = NetworkGetNetworkIdFromEntity(vehicle);
+                                console.log('PLAY');
+                                TaskPlayAnim(GetPlayerPed(-1),'weapon@w_sp_jerrycan','fire', 8.0, -8, -1, 49, 0, true, true, true);
+                            }
+                        } else {
+                            this.refillCount++;
+                            if(this.refillCount % 5 == 0) {
+                                const ret = this.JerryCanService.OnWeaponFire();
+                                if(ret && ret.content) {
+                                    if(ret.content in this.refilledData) this.refilledData[ret.content] += ret.value;
+                                    else this.refilledData[ret.content] = ret.value;
+                                }
+                            }
+                            if(this.refillCount % 100 == 0) {
+                                console.log('currently refilled for', this.refilledData);
+                                emitNet(EventName('UpdatePlayerVehicleRefillJerryCan'), this.refilledVehicle, this.refilledData);
+                                this.refilledData = {};
+                            }
+                        }
+
+                        retval = 'REFILL';
+                    }
+                    else {
+                        (DrawMarker as any)(1, worldX, worldY, groundZ, 0, 0, 0, 0, 0, 0, 2.0, 2.0, 0.1, 255, 0, 0, 255);
+                        retval = 'INRANGE';
+                    }
+                }
+                else (DrawMarker as any)(1, worldX, worldY, groundZ, 0, 0, 0, 0, 0, 0, 2.0, 2.0, 0.1, 255, 255, 255, 255);
+                
+            }
+        }
+        if(this.IsJerryCanRefilling && (retval == 'INRANGE' || retval == 'NOTINRANGE')) {
+            console.log('CLEER');
+            console.log('end refilled for', this.refilledData);
+            emitNet(EventName('UpdatePlayerJerryCanData'), this.JerryCanService.GetData()); // updates server data about jerry can content
+            emitNet(EventName('UpdatePlayerVehicleRefillJerryCan'), this.refilledVehicle, this.refilledData);
+            this.refillCount = 0;
+            this.IsJerryCanRefilling = false;
+            this.refilledData = {};
+            this.refilledVehicle = null;
+            ClearPedTasks(playerPed);
+        }
+        return retval != 'NOTINRANGE';
     }
 }
