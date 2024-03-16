@@ -222,7 +222,7 @@ export class AircraftService {
                     this.playerService.OpenPaymentMenu(player, +(fullRefuelPrice + this.GetAircraftFuelCost() * fuelToRefill).toFixed(2), 'Pegasus')
                         .then(([ok, method, card]) => {
                             if(ok) {
-                                aircraftSlots[slot].RequestRefuelProcess(player, fuelToRefill, method == 'BANK' ? card : null).then(() => {
+                                aircraftSlots[slot].RequestRefuelProcess(userid, fuelToRefill, method == 'BANK' ? card : null).then(() => {
                                     this.OpenAirHostessInteractMenu(player);
                                 });
                             } else {
