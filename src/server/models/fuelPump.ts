@@ -182,7 +182,6 @@ export class FuelPump {
             // this.logger.Warn('ReplaceObject waiting to new entity will exists', newEntityNetId);
             await Wait(100);
         }
-
         this.netEntity = newEntityNetId;
         return newEntityNetId;
     }
@@ -210,10 +209,12 @@ export class FuelPump {
         let hosepipe = this.GetHosepipe(hosepipeIndex);
         if (!hosepipe) hosepipe = await this.CreateHosepipe(hosepipeIndex, slotWorldCoords, viewDisplayWorldCoords);
 
-        // return this.playerService.Notification(source, '~r~Refuel in progress'); TODO:
-        if (hosepipe.GetVehicle() || hosepipe.GetJerryCan() || (hosepipe.GetPlayer() != null && hosepipe.GetPlayer() != source)) {
-            this.playerService.Notification(source, '~r~В колонке нет пистолета');
-            return false;
+        if (hosepipe.IsTakenOut()) {
+            if(hosepipe.GetPlayer() == null || (hosepipe.GetPlayer() != null && hosepipe.GetPlayer() != source)) {
+                this.playerService.Notification(source, '~r~В колонке нет пистолета');
+                setTimeout(() => this.SetBusy(false));
+                return false;
+            }
         }
 
         if (hosepipe.GetPlayer() == source) {
@@ -221,17 +222,17 @@ export class FuelPump {
             this.playerService.OnPlayerDropNozzle(source);
             this.UpdatePumpModelBySlot(hosepipeIndex).then((newPumpNetId: number) => {
                 const propIntAPI = new PropInteractionAPI();
-                this.SetBusy(false);
+                setTimeout(() => this.SetBusy(false));
                 propIntAPI.DisableEntityDespawn(newPumpNetId, false);
             });
         } else {
             const playerHosepipe = this.service.GetHosepipeIsPlayerHold(source);
             if (hosepipe.IsBroken()) {
-                this.SetBusy(false);
+                setTimeout(() => this.SetBusy(false));
                 return this.playerService.Notification(source, '~r~Колонка сломана, попробуйте другую');
             }
             if (playerHosepipe) {
-                this.SetBusy(false);
+                setTimeout(() => this.SetBusy(false));
                 return this.playerService.Notification(source, '~r~Вы уже держите пистолет');
             }
 
