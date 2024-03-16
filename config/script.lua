@@ -4,6 +4,7 @@ AddEventHandler("UnityFuel::RequestConfig", function()
         VehicleClassesData = VehicleClassesData,
         IndividualVehicleData = IndividualVehicleData,
         PumpsReplaceData = PumpsReplaceData,
+        ElecticPumpSpawnLocations = ElecticPumpSpawnLocations,
     })
 end)
 

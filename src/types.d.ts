@@ -2,6 +2,7 @@ type MySQLInsertReturn = {
     insertId: number,
 }
 type VectorArray = [number, number, number];
+type XYZ = { x: number, y: number, z: number };
 type UserId = number;
 type Source = number;
 type vRPServerFunctions = {
@@ -117,11 +118,16 @@ type FuelPumpReplaceData = {
     viewDisplays: { x: number, y: number, z: number }[];
     isElectricOnly?: boolean,
 }
+type ElecticPumpSpawnLocation = {
+    position: XYZ,
+    rotitation: XYZ | null,
+};
 type ServerConfig = {
     EssenceTable: EssenceTable,
     VehicleClassesData: Record<number, VehicleConfig>,
     IndividualVehicleData: Record<string, VehicleConfig>,
     PumpsReplaceData: FuelPumpReplaceData[],
+    ElecticPumpSpawnLocations: ElecticPumpSpawnLocation[],
 }
 type ClientConfig = {
     MinFuelForDegrade: number,

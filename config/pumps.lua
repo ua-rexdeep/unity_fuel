@@ -37,3 +37,14 @@ PumpsReplaceData = {
         }
     }
 }
+
+ElecticPumpSpawnLocations = {
+    {
+        position = { x = 278.53, y = -1237.98, z = 28.43 },
+        rotation = { x = 0.0, y = 0.0, z = 0.0 },
+    },
+    {
+        position = { x = 281.25, y = -1238.12, z = 28.40 },
+        rotation = { x = 0.0, y = 0.0, z = 0.0 },
+    }
+}

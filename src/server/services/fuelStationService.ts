@@ -40,9 +40,6 @@ export class FuelStationService {
                 this.MySQL.CreateFuelPumpsTable();
             }
         });
-
-        const [firstPlayer] = this.playerService.GetPlayers();
-        if (firstPlayer) this.CreateElectricPumpProps(firstPlayer);
     }
 
     CheckAndFetchStations() {
@@ -299,31 +296,33 @@ export class FuelStationService {
         this.vRP.openMenu(player, menuData);
     }
 
-    public readonly StaticElecticStations = [
-        {pos: new Vector3(278.53, -1237.98, 28.43), rot: new Vector3(0, 0, 0)},
-        {pos: new Vector3(281.25, -1238.12, 28.40), rot: new Vector3(0, 0, 0)},
-    ];
+    public StaticElecticStations: ElecticPumpSpawnLocation[] = [];
 
     private IsCreateElecticStationLocked = false;
 
-    async CreateElectricPumpProps(player: number) {
-        if (this.IsCreateElecticStationLocked || this.DoesAnyElectricStationExists()) return;
+    async CreateElectricPumpProps(player: number, electicPumpsLocations?: ElecticPumpSpawnLocation[]) {
+        if (this.IsCreateElecticStationLocked) return;
         this.IsCreateElecticStationLocked = true;
+
+        this.StaticElecticStations = electicPumpsLocations || this.StaticElecticStations;
+
         for (const station of this.StaticElecticStations) {
-            void this.CreateClientObject(player, 'prop_electro_airunit01', station.pos, station.rot);
-        }
-    }
+            let found = false;
+            for (const object of GetAllObjects()) {
+                const model = GetEntityModel(object);
+                const [ox, oy, oz] = GetEntityCoords(object);
+                const [ex, ey, ez] = Vector3.fromXYZ(station.position).toArray();
 
-    DoesAnyElectricStationExists() {
-        for (const object of GetAllObjects()) {
-            const model = GetEntityModel(object);
-            const [ox, oy, oz] = GetEntityCoords(object);
-            const [ex, ey, ez] = this.StaticElecticStations[0].pos.toArray();
+                if ([GetHashKey('prop_electro_airunit01'), GetHashKey('prop_electro_airunit02')].includes(model) && vDist(ox, oy, oz, ex, ey, ez) <= 1.0) {
+                    found = true;
+                    break;
+                }
+            }
+            console.log('CreateElectricPumpProps', found);
 
-            if ([GetHashKey('prop_electro_airunit01'), GetHashKey('prop_electro_airunit02')].includes(model) && vDist(ox, oy, oz, ex, ey, ez) <= 1.0) {
-                return true;
+            if(!found) {
+                this.CreateClientObject(player, 'prop_electro_airunit01', Vector3.fromXYZ(station.position), station.rotitation ? Vector3.fromXYZ(station.rotitation) : new Vector3(0,0,0));
             }
         }
-        return false;
     }
 }

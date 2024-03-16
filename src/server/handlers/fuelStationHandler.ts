@@ -222,6 +222,9 @@ export class FuelStationHandler {
         this.essenceService.SetVehicleClassesData(config.VehicleClassesData);
         this.essenceService.SetVehiclesIndividualData(config.IndividualVehicleData);
         this.service.SetReplacePumpConfig(config.PumpsReplaceData);
+
+        const [firstPlayer] = this.playerService.GetPlayers();
+        if (firstPlayer) this.service.CreateElectricPumpProps(firstPlayer, config.ElecticPumpSpawnLocations);
     }
 
     private async RequestDetachNozzle(nozzleNet: number) {
