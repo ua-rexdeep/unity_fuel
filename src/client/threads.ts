@@ -116,9 +116,18 @@ export class Threads {
             DrawText3D(offx, offy, offz, this.JerryCanService.GetContentAmount() > 0 ? `${this.JerryCanService.GetContentAmount().toFixed(2)}L` : 'Empty');
 
             const RefillNearestVehicle = this.VehicleJerryCanRefill();
-            if(RefillNearestVehicle || this.JerryCanService.GetContentAmount() == 0) DisableControlAction(1, 24, true);
+            const PreventFiring = RefillNearestVehicle || this.JerryCanService.GetContentAmount() == 0;
+            if(PreventFiring) {
+                DisablePlayerFiring(PlayerId(), true);
+            }
 
             if(IsPedShooting(playerPed)) {
+                
+                if(PreventFiring) {
+                    ClearPedTasks(playerPed);
+                    return;
+                }
+
                 this.count++;
                 if(this.count > 50) {
                     this.JerryCanService.OnWeaponFire();
