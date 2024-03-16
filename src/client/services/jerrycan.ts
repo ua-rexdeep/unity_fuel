@@ -3,10 +3,7 @@ export class JerryCanService {
     private jerryCanData: JerryCanData = {};
 
     UpdateData(data: JerryCanData) {
-        this.jerryCanData = {
-            petrol: 1,
-            solvent: 2,
-        };
+        this.jerryCanData = data;
     }
 
     GetData(){

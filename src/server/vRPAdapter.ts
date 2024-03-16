@@ -1,13 +1,13 @@
 type Callback = (...retArgs: unknown[]) => void;
 
-const ids = {};
+const ids: Record<number, any> = {};
 
 export const Adapter = {
-    getInterface: (name): vRPServerFunctions => new Proxy({ name }, {
+    getInterface: (name: string): vRPServerFunctions => new Proxy({ name }, {
         get: proxy_resolve,
     })
 };
-const proxy_resolve = (obj, funcName) => (...args: NonNullable<any>) => new Promise((done: Callback) => {
+const proxy_resolve = (obj: any, funcName: string) => (...args: NonNullable<any>) => new Promise((done: Callback) => {
     
     TriggerEvent(`${obj.name}:proxy`, funcName, [...args], (...re: any[]) => {
         done(...re[0]);
@@ -15,7 +15,7 @@ const proxy_resolve = (obj, funcName) => (...args: NonNullable<any>) => new Prom
 });
 
 export const ClientAdapter = {
-    getInterface: (name, identifier) => {
+    getInterface: (name: string, identifier: string) => {
     
         onNet(`${name}:${identifier}:tunnel_res`, tunnel_return);
         on(`${name}:${identifier}:tunnel_res`, tunnel_return);
@@ -26,14 +26,14 @@ export const ClientAdapter = {
     }
 };
 
-const tunnel_return = (rid, args) => {
+const tunnel_return = (rid: number, args: any) => {
     if(rid in ids) {
         ids[rid](args);
         delete ids[rid];
     }
 };
 
-const client_proxy_resolve = (obj, funcName: string) => (source: number, ...args: NonNullable<any>) => new Promise((done: Callback) => {
+const client_proxy_resolve = (obj: any, funcName: string) => (source: number, ...args: NonNullable<any>) => new Promise((done: Callback) => {
 
     let id = Date.now();
     while(ids[id] != null) {

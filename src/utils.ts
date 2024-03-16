@@ -1,5 +1,5 @@
 export const Wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
-export const vDist = (x1, y1, z1, x2, y2, z2) => {
+export const vDist = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => {
     const deltaX = x2 - x1;
     const deltaY = y2 - y1;
     const deltaZ = z2 - z1;
@@ -21,7 +21,7 @@ export const LoadModel = async (modelName: string) => {
     return modelName;
 };
 export const EventName = (suffix: string) => `UnityFuel::${suffix}`;
-export function DrawText3D(x, y, z, text, r = 255, g = 255, b = 255) {   
+export function DrawText3D(x: number, y: number, z: number, text: string, r = 255, g = 255, b = 255) {   
     const [onScreen, _x, _y] = World3dToScreen2d(x, y, z);
     if(onScreen){
         SetTextScale(0.25, 0.25);
@@ -35,7 +35,7 @@ export function DrawText3D(x, y, z, text, r = 255, g = 255, b = 255) {
     }
 }
 export class Vector3 {
-    constructor(public x: number, public y: number, public z: number) {}
+    constructor(public x: number, public y: number, public z: number, public h?: number) {}
     static fromArray([x, y, z]: number[]) {
         return new this(x,y,z);
     }

@@ -26,12 +26,12 @@ export class HosepipeService {
         private readonly entityService: EntityService,
     ){}
 
-    async Create(pumpEntity: number, slotOffset: [number, number, number]){
+    async Create(pumpEntity: number, slotOffset: [number, number, number], isElectical: boolean){
         const playerPed = GetPlayerPed(-1);
         const playerCoords = GetEntityCoords(playerPed);
-        const pumpCoords = GetEntityCoords(pumpEntity);
+        const pumpCoords = GetEntityCoords(pumpEntity) as [number, number, number];
 
-        const model = await LoadModel('prop_cs_electro_nozle');
+        const model = await LoadModel(isElectical ? 'prop_cs_electro_nozle' : 'prop_cs_fuel_nozle');
         const nozzleId = CreateObject(
             model, 
             playerCoords[0], playerCoords[1], playerCoords[2], 
@@ -58,7 +58,9 @@ export class HosepipeService {
             to: {
                 netEntity: NetworkGetNetworkIdFromEntity(nozzleId),
                 offset: { x: 0.0, y: -0.033, z: -0.195 }
-            }
+            },
+            ropeLength: 5.0,
+            ropeType: 4,
         };
 
         return {
@@ -95,19 +97,23 @@ export class HosepipeService {
         return nozzleId;
     }
 
-    AttachToVehicle(nozzleEntity: number, vehicleNetId: number, fuelCupOffset: { x: number, y: number, z: number }, vehicleConfig: VehicleConfig | null) {
+    AttachToEntity(nozzleEntity: number, entNetid: number, fuelCupOffset: { x: number, y: number, z: number }, vehicleConfig: VehicleConfig | null) {
         const nozzleId = NetworkGetEntityFromNetworkId(nozzleEntity);
-        const vehicleId = NetworkGetEntityFromNetworkId(vehicleNetId);
-        this.logger.Warn(`Class of vehicle ${vehicleNetId}: ${GetVehicleClass(vehicleId)}`);
-        const tankBoneIndex = GetEntityBoneIndexByName(vehicleId, 'petrolcap');
-        // is bike AttachEntityToEntity(nozzle, vehicle, ptankBone, 0.0 + newTankPosition.x, -0.2 + newTankPosition.y, 0.2 + newTankPosition.z, -80.0, 0.0, 0.0, true, true, false, false, 1, true)
+        const entityId = NetworkGetEntityFromNetworkId(entNetid);
+        const IsEntityAJerryCan = GetEntityModel(entityId) == GetHashKey('prop_jerrycan_01a');
 
-        this.entityService.RequestEntityControl(nozzleId, [vehicleNetId]);
+        this.entityService.RequestEntityControl(nozzleId, [entNetid]);
 
-        const { x: nozRotX, y: nozRotY, z: nozRotZ } = vehicleConfig?.refillNozzleRotation || new Vector3(-125.0, -90.0, -90.0);
+        let { x: nozRotX, y: nozRotY, z: nozRotZ } = vehicleConfig?.refillNozzleRotation || new Vector3(-125.0, -90.0, -90.0);
+        if(IsEntityAJerryCan) {
+            nozRotX = -75.0;
+            nozRotY = 0;
+            nozRotZ = 90;
+        }
+        
         AttachEntityToEntity(
-            nozzleId, vehicleId, tankBoneIndex, 
-            fuelCupOffset.x > 0 ? fuelCupOffset.x + 0.2 : fuelCupOffset.x - 0.2, fuelCupOffset.y, fuelCupOffset.z, 
+            nozzleId, entityId, 0, 
+            fuelCupOffset.x, fuelCupOffset.y, fuelCupOffset.z, 
             nozRotX, nozRotY, nozRotZ, 
             true, true, true, 
             false, 1, true);

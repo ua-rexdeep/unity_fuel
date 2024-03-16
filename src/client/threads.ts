@@ -6,8 +6,9 @@ import { RopeService } from './services/ropes';
 import { UserInterface } from './services/userinterface';
 import { VehicleService } from './services/vehicle';
 
+// @ts-expect-error
 if(!global.LoadAnimDict) {
-    global.LoadAnimDict = (_: string)  => {
+    (global as any).LoadAnimDict = (_: string)  => {
         console.error('NO LoadAnimDict FUNC');
     };
 }
@@ -15,7 +16,7 @@ if(!global.LoadAnimDict) {
 export class Threads {
     private readonly logger = new Logger('Threads');
     
-    private lastVehicle: number | null;
+    private lastVehicle: number | null = null;
 
     constructor(
         private readonly hosepipeService: HosepipeService,
@@ -61,7 +62,7 @@ export class Threads {
                     SetEntityAsMissionEntity(object, true, true);
                     DeleteEntity(object);
                 }
-                if(GetEntityModel(object) == GetHashKey('prop_cs_electro_nozle')) {
+                if(GetEntityModel(object) == GetHashKey('prop_cs_electro_nozle') || GetEntityModel(object) == GetHashKey('prop_cs_fuel_nozle')) {
                     logger.Log('', object);
                     logger.Log(`Object(${object}) Net(${NetworkGetNetworkIdFromEntity(object)})`);
                     this.hosepipeService.Delete(object);
@@ -79,6 +80,13 @@ export class Threads {
             if(this.lastVehicle != vehicle && GetPedInVehicleSeat(vehicle, -1) == playerPed) {
                 emitNet(EventName('PlayerEnterVehicle'), NetworkGetNetworkIdFromEntity(vehicle));
                 this.lastVehicle = vehicle;
+
+                if(GetEntityModel(vehicle) == GetHashKey('cerberus2')) {
+                    ClearPrints();
+                    SetTextEntry_2('STRING');
+                    AddTextComponentString('~y~Движение разрешено только по ~r~аеропорту~y~.');
+                    DrawSubtitleTimed(10_000, true);
+                }
             }
 
             if(this.isVehicleEngineRunning == false && IsVehicleEngineOn(vehicle) == true) {
@@ -88,10 +96,12 @@ export class Threads {
 
             this.vehicleService.ProcessVehicleFuelState(vehicle);
 
+
         } else if(this.lastVehicle) {
             this.lastVehicle = null;
             this.isVehicleEngineRunning = false;
         }
+
     }
 
     count = 0;
@@ -99,27 +109,19 @@ export class Threads {
         const playerPed = GetPlayerPed(-1);
         
         if(GetSelectedPedWeapon(playerPed) == GetHashKey('WEAPON_PETROLCAN')) {
-            if(this.VehicleJerryCanRefill() || this.JerryCanService.GetContentAmount() == 0) DisablePlayerFiring(PlayerId(), true);
             
             SetPedAmmo(playerPed, GetHashKey('WEAPON_PETROLCAN'), 100);
 
             const [offx, offy, offz] = GetWorldPositionOfEntityBone(playerPed, GetPedBoneIndex(playerPed, 57005));
             DrawText3D(offx, offy, offz, this.JerryCanService.GetContentAmount() > 0 ? `${this.JerryCanService.GetContentAmount().toFixed(2)}L` : 'Empty');
 
+            const RefillNearestVehicle = this.VehicleJerryCanRefill();
+            if(RefillNearestVehicle || this.JerryCanService.GetContentAmount() == 0) DisableControlAction(1, 24, true);
+
             if(IsPedShooting(playerPed)) {
                 this.count++;
                 if(this.count > 50) {
                     this.JerryCanService.OnWeaponFire();
-                }
-                else if(this.count % 10 == 0) {
-                    emit('propInt::Debugger', {
-                        id: 'cm:1',
-                        text: `Firing ${this.count > 50 ? 'true' : 'delay'}`,
-                        entity: playerPed,
-                        left: 150,
-                        top: 300,
-                        customPosition: true,
-                    });
                 }
                 return;
             }
@@ -204,7 +206,7 @@ export class Threads {
 
     private IsJerryCanRefilling = false;
     private refillCount = 0;
-    private refilledData = {};
+    private refilledData: Record<string, number> = {};
     private refilledVehicle: number | null = null;
     private VehicleJerryCanRefill() {
         let retval: 'NOTINRANGE' | 'INRANGE' | 'REFILL' = 'NOTINRANGE';
@@ -214,11 +216,11 @@ export class Threads {
             const [vx, vy, vz] = GetEntityCoords(vehicle);
             const vehicleRefillConfig = this.vehicleService.GetVehicleRefillConfig(vehicle);
             // console.log(`REFILL: ${vehicle} / ${vDist(px, py, pz, vx, vy, vz).toFixed(2)}`);
-            if(vehicleRefillConfig && vDist(px, py, pz, vx, vy ,vz) < 5.0) {
+            if(vehicleRefillConfig && !vehicleRefillConfig.isElectic && vDist(px, py, pz, vx, vy ,vz) < 5.0) {
                 const { x: rx, y: ry, z: rz } = vehicleRefillConfig.refillNozzleOffset;
                 const [ worldX, worldY, worldZ ] = GetOffsetFromEntityInWorldCoords(vehicle, rx, ry, rz);
                 const [_, groundZ] = GetGroundZFor_3dCoord(worldX, worldY, worldZ, false);
-                DrawText3D(worldX, worldY, worldZ, `REFILL: ${vehicle} / ${groundZ} / ${vDist(px, py, pz, worldX, worldY ,groundZ).toFixed(2)}`);
+                DrawText3D(worldX, worldY, worldZ, 'Заправить из канистры');
                 if(vDist(px, py, pz, worldX, worldY ,groundZ) < 1.5) {
                     if(IsDisabledControlPressed(1, 24) && this.JerryCanService.GetContentAmount() > 0) {
                         (DrawMarker as any)(1, worldX, worldY, groundZ, 0, 0, 0, 0, 0, 0, 2.0, 2.0, 0.1, 0, 255, 0, 255);
@@ -259,8 +261,6 @@ export class Threads {
             }
         }
         if(this.IsJerryCanRefilling && (retval == 'INRANGE' || retval == 'NOTINRANGE')) {
-            console.log('CLEER');
-            console.log('end refilled for', this.refilledData);
             emitNet(EventName('UpdatePlayerJerryCanData'), this.JerryCanService.GetData()); // updates server data about jerry can content
             emitNet(EventName('UpdatePlayerVehicleRefillJerryCan'), this.refilledVehicle, this.refilledData);
             this.refillCount = 0;

@@ -2,42 +2,53 @@ type MySQLInsertReturn = {
     insertId: number,
 }
 type VectorArray = [number, number, number];
+type UserId = number;
+type Source = number;
 type vRPServerFunctions = {
-    getUserId(source: number): Promise<number>,
+    getUserId(source: number): Promise<UserId>,
     defInventoryItem(
-        idname: string,
+        id_name: string,
         name: string,
         description: string,
-        choices: (itemid: string) => Record<string, [(source: number, choiceName: string) => unknown], string?>,
+        choices: (item_id: string) => Record<string, [(source: number, choiceName: string) => unknown], string?>,
         weight: number,
         listeners: Record<string, (source: number, idname: string) => unknown>): Promise<void>,
-    getUserDataTable(userId: number): Promise<UserDataTable>,
-    hasInventoryItem(userId: number, idname: string): Promise<boolean>,
-    getInventoryItemAmount(userId: number, idname: string): Promise<boolean>,
-    giveInventoryItem(userId: number, idname: string, amount: number, notify: boolean, addon?: Record<string, string | number>): Promise<void>,
-    tryGetInventoryItem(userId: number, idname: string, amount: number, notify: boolean): Promise<boolean>,
+    getUserDataTable(userId: UserId): Promise<UserDataTable>,
+    hasInventoryItem(userId: UserId, idname: string): Promise<boolean>,
+    getInventoryItemAmount(userId: UserId, idname: string): Promise<boolean>,
+    giveInventoryItem(userId: UserId, idname: string, amount: number, notify: boolean, addon?: Record<string, string | number>): Promise<void>,
+    tryGetInventoryItem(userId: UserId, idname: string, amount: number, notify: boolean): Promise<boolean>,
     openInventory(source: number): Promise<void>,
     createItem(type: 'item',idname: string,name: string,description: string,weight: number): Promise<void>,
     openMenu(source: number, menudata: MenuDataType),
     closeMenu(source: number),
-    getUserGroups(userId: number): Promise<Record<string, boolean>>,
-    getBankMoney(userId: number): Promise<number>, // @deprecated
+    getUserGroups(userId: UserId): Promise<Record<string, boolean>>,
+    getBankMoney(userId: UserId): Promise<number>, // @deprecated
     registerMenuBuilder(menuName: string, registration: (add, data: ({ player: number })) => void),
     buildMenu(menuName: string, data: { player: number }, builder: (menudata: any) => void),
     prompt(source: number, title: string, placeholder: string, cb: (player: number, value: string) => void),
-    giveMoney(userid: number, value: number),
-    tryPayment(userid: number, value: number): Promise<boolean>,
-    getMoney(userid: number): Promise<number>,
-    getUserIdentity(userid: number): Promise<UserIdentities>,
-    getInventoryItemData(userid: number, idname: string): Promise<Record<string, string | number>>,
+    giveMoney(userid: UserId, value: number),
+    tryPayment(userid: UserId, value: number): Promise<boolean>,
+    getMoney(userid: UserId): Promise<number>,
+    getUserIdentity(userid: UserId): Promise<UserIdentities>,
+    getInventoryItemData(userid: UserId, idname: string): Promise<Record<string, string | number>>,
     addItemListener<DataType>(idname: string, eventname: string, callback: (player: number, data: DataType) => void): void,
-    updateUserDataTable(userid: number, datatable: Record<string, any>): Promise<UserDataTable>,
+    updateUserDataTable(userid: UserId, datatable: Record<string, any>): Promise<UserDataTable>,
+    isConnected(userid: UserId): Promise<boolean>,
+    getUserSource(userid: UserId): Promise<number>,
 }
 
 type vRPClientFunctions = {
     notify(source: number, notifs: string): Promise<void>,
     isInComa(source: number, data: Record<string, never>): Promise<boolean>,
     getWeapons(source: number): Promise<any>,
+    addBlip(source: number, x: number,y: number,z: number,idtype: number,idcolor: numebr,text: string, rotation?: number): Promise<number>,
+    setNamedBlip(source: number, name: string, x: number,y: number,z: number,idtype: number,idcolor: numebr,text: string, rotation?: number): Promise<number>,
+    removeBlip(source: number, blipId: number): Promise<void>,
+    removeNamedBlip(source: number, blipName: string): Promise<void>,
+    setGPS(source: number, x: number, y: number): Promise<void>,
+    setBlipRoute(source: number, id: boolean): Promise<void>,
+    addEntityBlip(source: number, entityNet: number, idtype: number, idcolor: number,text: string, rotation?: number): Promise<number>,
 }
 
 type UserDataTable = {
@@ -56,14 +67,14 @@ type UserDataTable = {
     thirst: number,
     customization: Record<string, number[]>,
 
-    jerryCanWeaponData?: {
+    jerryCanWeaponData: null | {
         petrol?: number,
         solvent?: number,
     }
 }
 
 type MenuDataType = {
-    [key: string]: [(source?: number, choiceName?: string) => void, string?]
+    [key: string]: [(source: number, choiceName?: string) => void, string?] | undefined,
 } | {
     name: string,
     css?: {
@@ -117,7 +128,7 @@ type ClientConfig = {
     IndividualVehicleData: Record<string, VehicleConfig>,
 }
 interface RopeAttachements {
-    pumpCoords: number[];
+    pumpCoords: [number, number, number];
     from: {
         netEntity: number;
         offset: {
@@ -125,7 +136,7 @@ interface RopeAttachements {
             y: number;
             z: number;
         };
-    };
+    },
     to: {
         netEntity: number;
         offset: {
@@ -133,5 +144,17 @@ interface RopeAttachements {
             y: number;
             z: number;
         };
-    };
+    },
+    ropeLength: number,
+    ropeType: 2 | 3 | 4,
+}
+
+type PlayerLynxAccount = {
+    cardHolder: string,
+    card: string,
+    phone: string,
+    bankMoney: number,
+    payments: [],
+    registerState: 1 | 0,
+    value: number,
 }

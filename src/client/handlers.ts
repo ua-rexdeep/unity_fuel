@@ -19,7 +19,7 @@ export class Handler {
         onNet(EventName('DropPlayerNozzle'), this.DropPlayerNozzle.bind(this));
         onNet(EventName('CreateRopeWithAttachments'), this.CreateRopeWithAttachments.bind(this));
         onNet(EventName('PickupNozzle'), this.PickupNozzle.bind(this));
-        onNet(EventName('InsertNozzleIntoVehicle'), this.InsertNozzleIntoVehicle.bind(this));
+        onNet(EventName('InsertNozzleIntoEntity'), this.InsertNozzleIntoEntity.bind(this));
         onNet(EventName('HosepipeSlotBrokenByVehicle'), this.OnHosepipeSlotBrokenByVehicle.bind(this));
         onNet(EventName('VehicleFuelUpdated'), this.VehicleFuelUpdated.bind(this));
         
@@ -30,14 +30,26 @@ export class Handler {
         onNet(EventName('RequestDetachNozzle'), this.RequestDetachNozzle.bind(this));
         onNet(EventName('RequestVehicleInfo'), this.RequestVehicleInfo.bind(this));
         onNet(EventName('PlayerJerryCanUpdated'), this.OnPlayerJerryCanUpdated.bind(this));
+
+
+        if(process.env.NODE_ENV == 'development') {
+            ClearOverrideWeather();
+            ClearWeatherTypePersist();
+            SetWeatherTypePersist('XMAS');
+            SetWeatherTypeNow('XMAS');
+            SetWeatherTypeNowPersist('XMAS');
+            SetForceVehicleTrails(true);
+            SetForcePedFootstepsTracks(true);
+        }
     }
 
-    private async GiveNozzleToPlayer(pumpNet: number, pumpId: number, hosepipeIndex: number, offset: [number, number, number]) {
+    private async GiveNozzleToPlayer(pumpNet: number, pumpId: number, hosepipeIndex: number, offset: [number, number, number], isElectical: boolean) {
         const { 
             nozzleId, pumpSlotEntity, ropeAttachements 
-        } = await this.hosepipeService.Create(NetworkGetEntityFromNetworkId(pumpNet), offset);
+        } = await this.hosepipeService.Create(NetworkGetEntityFromNetworkId(pumpNet), offset, isElectical);
         this.hosepipeService.AttachToPlayer(nozzleId);
-        emitNet(EventName('NozzleCreated'), pumpNet, pumpId, NetworkGetNetworkIdFromEntity(nozzleId), NetworkGetNetworkIdFromEntity(pumpSlotEntity), hosepipeIndex, ropeAttachements);
+        emitNet(EventName('NozzleCreated'), pumpNet, pumpId, NetworkGetNetworkIdFromEntity(nozzleId), 
+            NetworkGetNetworkIdFromEntity(pumpSlotEntity), hosepipeIndex, ropeAttachements);
     }
 
     private async RemoveNozzleRope(nozzleNetId: number) {
@@ -48,6 +60,7 @@ export class Handler {
 
     private async DropPlayerNozzle(nozzleNet: number) {
         const nozzle = NetworkGetEntityFromNetworkId(nozzleNet);
+        SetEntityVisible(nozzle, true, true);
         DetachEntity(nozzle, true, true);
     }
 
@@ -59,8 +72,8 @@ export class Handler {
         this.hosepipeService.AttachToPlayer(NetworkGetEntityFromNetworkId(entityNet));
     }
 
-    private InsertNozzleIntoVehicle(nozzleEntity: number, vehicleNet: number, fuelCupOffset) {
-        this.hosepipeService.AttachToVehicle(nozzleEntity, vehicleNet, fuelCupOffset, this.vehicleService.GetVehicleRefillConfig(NetworkGetEntityFromNetworkId(vehicleNet)));
+    private InsertNozzleIntoEntity(nozzleEntity: number, entNet: number, fuelCupOffset: { x: number, y: number, z: number }) {
+        this.hosepipeService.AttachToEntity(nozzleEntity, entNet, fuelCupOffset, this.vehicleService.GetVehicleRefillConfig(NetworkGetEntityFromNetworkId(entNet)));
     }
 
     private OnHosepipeSlotBrokenByVehicle(slotEntityNet: number) {
@@ -73,7 +86,7 @@ export class Handler {
         const playerPed = GetPlayerPed(-1);
         const playerVehicle = GetVehiclePedIsIn(playerPed, false);
         const vehicleEntity = NetworkGetEntityFromNetworkId(vehicleNet);
-        // console.log('UPDFUEL', typeof(vehicleNet), vehicleNet, fuel, playerVehicle, vehicleEntity);
+        console.log('UPDFUEL', typeof(vehicleNet), vehicleNet, fuel, playerVehicle, vehicleEntity);
 
         SetVehicleFuelLevel(vehicleEntity, fuel == 0 ? 20 : 50);
         if(playerVehicle == vehicleEntity) {
@@ -83,7 +96,7 @@ export class Handler {
         }
     }
 
-    private PlayerOnNozzleViewDisplay(fuelCost, fuelTank) {
+    private PlayerOnNozzleViewDisplay(fuelCost: string, fuelTank: string) {
         console.log('PlayerOnNozzleViewDisplay');
         this.UIService.ShowNozzleDisplay();
         this.UIService.UpdateNozzleDisplay(fuelCost, fuelTank);

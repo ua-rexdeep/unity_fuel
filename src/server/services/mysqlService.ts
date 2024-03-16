@@ -1,8 +1,9 @@
-import { IFuelPump, IFuelPumpDTO } from '../models/pump';
+import { IElecticPumpDTO, IFuelPump, IPetrolPumpDTO } from '../models/fuelPump';
 import { FuelStationDTO, IFuelStation } from '../models/station';
 
 export class MySQLService {
-    constructor(){}
+    constructor() {
+    }
 
     Command<Q = void, R = void>(query: string) {
         return (variables: Q) => new Promise((done: (rows: R extends MySQLInsertReturn ? MySQLInsertReturn : (R extends void ? void : Array<R>)) => void) => {
@@ -11,21 +12,23 @@ export class MySQLService {
     }
 
     async IsTableExists(table_name: string) {
-        const [{ table_exists }] = await this.Command<{ table_name: string }, { table_exists: number }>(`SELECT EXISTS (
+        const [{table_exists}] = await this.Command<{ table_name: string }, { table_exists: number }>(`SELECT EXISTS (
             SELECT 1
             FROM information_schema.tables
             WHERE table_name = @table_name
-        ) AS table_exists;`)({ table_name });
+        ) AS table_exists;`)({table_name});
 
         return table_exists == 1;
     }
 
     async IsTableColumnExists(table_name: string, column_name: string) {
-        const [{ column_exists }] = await this.Command<{ table_name: string, column_name: string }, { column_exists: number }>(`SELECT EXISTS (
+        const [{column_exists}] = await this.Command<{ table_name: string, column_name: string }, {
+            column_exists: number
+        }>(`SELECT EXISTS (
             SELECT 1
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE table_name = '${table_name}' AND column_name = '${column_name}'
-        ) AS column_exists;`)({ column_name, table_name });
+        ) AS column_exists;`)({column_name, table_name});
 
         return column_exists == 1;
     }
@@ -33,6 +36,7 @@ export class MySQLService {
     // FuelStations //
 
     private fuelStationsTableName = 'vrp_fuelStations';
+
     CreateFuelStationsTable() {
         return this.Command(`
         CREATE TABLE ${this.fuelStationsTableName} (
@@ -45,6 +49,7 @@ export class MySQLService {
             owner INT DEFAULT NULL,
             brand VARCHAR(128) DEFAULT NULL,
             address VARCHAR(248) DEFAULT NULL,
+            isElecticParking INT DEFAULT 0,
             PRIMARY KEY (id)
         )`)();
     }
@@ -63,15 +68,22 @@ export class MySQLService {
     FetchFuelStationById(id: number) {
         return this.Command<{ stationId: number }, IFuelStation>(`
             select * from ${this.fuelStationsTableName} where \`id\` = @stationId;
-        `)({ stationId: id });
+        `)({stationId: id});
     }
 
     FetchAllFuelStations() {
         return this.Command<void, IFuelStation>(`select * from ${this.fuelStationsTableName};`)();
     }
 
-    UpdateFuelStation(stationId: number, dto: { fuel: number, fuelCost: number, owner?: number }) {
-        return this.Command<typeof dto & {stationId:number}, void>(`update ${this.fuelStationsTableName} set fuel = @fuel, fuelCost = @fuelCost, owner = @owner where id = @stationId;`)({
+    UpdateFuelStation(stationId: number, dto: {
+        fuel: number,
+        fuelCost: number,
+        owner?: number,
+        electricityCost: number
+    }) {
+        return this.Command<typeof dto & { stationId: number }, void>(`
+            update ${this.fuelStationsTableName} set fuel = @fuel, fuelCost = @fuelCost, owner = @owner, electricityCost = @electricityCost where id = @stationId;
+        `)({
             stationId,
             ...dto,
         });
@@ -80,17 +92,21 @@ export class MySQLService {
     // FuelPumps //
 
     private fuelPumpsTableName = 'vrp_fuelPumps';
+
     CreateFuelPumpsTable() {
         return this.Command(`
         CREATE TABLE ${this.fuelPumpsTableName} (
             id VARCHAR(24) NOT NULL,
-            stationId INT NOT NULL,
+            stationId INT DEFAULT NULL,
+            houseId INT DEFAULT NULL,
             x FLOAT DEFAULT 0,
             y FLOAT DEFAULT 0,
             z FLOAT DEFAULT 0,
             defaultRotation FLOAT DEFAULT 0,
             hosepipe1 TEXT,
             hosepipe2 TEXT,
+            number INT NOT NULL,
+            isElectical INT NOT NULL,
             PRIMARY KEY (id)
         )`)();
     }
@@ -99,30 +115,41 @@ export class MySQLService {
         return this.IsTableExists(this.fuelPumpsTableName);
     }
 
-    async InsertFuelPump(dto: IFuelPumpDTO) {
+    async InsertPetrolPump(dto: IPetrolPumpDTO) {
         return await this.Command<typeof dto, MySQLInsertReturn>(`
-            INSERT INTO ${this.fuelPumpsTableName} (id, stationId, x, y, z, defaultRotation, hosepipe1, hosepipe2) 
-            values (@id, @stationId, @x, @y, @z, @defaultRotation, '{ "broken": false }', '{ "broken": false }');
+            INSERT INTO ${this.fuelPumpsTableName} (id, stationId, x, y, z, defaultRotation, hosepipe1, hosepipe2, number, isElectical) 
+            values (@id, @stationId, @x, @y, @z, @defaultRotation, '{ "broken": false }', '{ "broken": false }', @number, 0);
         `)(dto);
     }
 
-    FetchFuelPumpById(id: string) {
-        return this.Command<{ pumpId: string }, IFuelPump>(`
+    async InsertElectricPump(dto: IElecticPumpDTO) {
+        return await this.Command<typeof dto, MySQLInsertReturn>(`
+            INSERT INTO ${this.fuelPumpsTableName} (id, stationId, x, y, z, defaultRotation, hosepipe1, hosepipe2, number, isElectical) 
+            values (@id, @stationId, @x, @y, @z, @defaultRotation, '{ "broken": false }', '{ "broken": false }', @number, 1);
+        `)(dto);
+    }
+
+    async FetchFuelPumpById(id: string) {
+        const p = await this.Command<{ pumpId: string }, IFuelPump>(`
             select * from ${this.fuelPumpsTableName} where \`id\` = @pumpId;
-        `)({ pumpId: id });
+        `)({pumpId: id});
+        console.log('MySQL:FetchFuelPumpById', id, JSON.stringify(p));
+        return p;
     }
 
     FetchStationFuelPumps(stationId: number) {
         return this.Command<{ stationId: number }, IFuelPump>(`
             select * from ${this.fuelPumpsTableName} where stationId = @stationId;
-        `)({ stationId });
+        `)({stationId});
     }
 
-    UpdateFuelStationPump(stationId: number, pumpId: string, dto: { broken: 0 | 1 }) {
-        return this.Command<typeof dto & {stationId:number,pumpId:string,broken:0|1}, void>(`update ${this.fuelPumpsTableName} set broken = @broken where id = @pumpId and stationId = @stationId;`)({
-            stationId,
+    UpdateFuelStationPump(pumpId: string, dto: { broken: boolean }) {
+        return this.Command<{
+            pumpId: string,
+            broken: 0 | 1
+        }, void>(`update ${this.fuelPumpsTableName} set broken = @broken where id = @pumpId;`)({
             pumpId,
-            ...dto,
+            broken: dto.broken ? 1 : 0,
         });
     }
 }

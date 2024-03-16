@@ -17,7 +17,7 @@ module.exports = [
             new webpack.DefinePlugin({ 'global.GENTLY': false }),
         ],
         optimization: {
-            minimize: false
+            minimize: true
         },
         resolve: {
             extensions: [ '.tsx', '.ts', '.js' ]
@@ -45,7 +45,7 @@ module.exports = [
             new webpack.DefinePlugin({ 'global.GENTLY': false }),
         ],
         optimization: {
-            minimize: false
+            minimize: true,
         },
         resolve: {
             extensions: [ '.tsx', '.ts', '.js' ]

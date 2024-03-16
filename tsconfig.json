@@ -12,9 +12,11 @@
         "incremental": true,
         "skipLibCheck": true,
         "strictNullChecks": true,
+        "strict": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
         "allowJs": true,
+        "alwaysStrict": true,
         "types": [
             "@citizenfx/server",
             "@citizenfx/client",

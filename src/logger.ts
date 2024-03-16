@@ -1,13 +1,13 @@
 export class Logger {
     private readonly title: string;
 
-    constructor(title: string, ...args) {
+    constructor(title: string, ...args: any) {
         this.title = title;
         if(args.length) this.Log(...args);
         else this.Log('Logger');
     };
 
-    static color(c, text) { return `^${c}${text}^0`; }
+    static color(c: number, text: string | number | boolean) { return `^${c}${text}^0`; }
 
     static white(args: string | number | boolean) { return Logger.color(0, args); }
     static red(args: string | number | boolean) { return Logger.color(1, args); }
@@ -19,24 +19,24 @@ export class Logger {
     static darkred(args: string | number | boolean) { return Logger.color(8, args); }
     static darkblue(args: string | number | boolean) { return Logger.color(9, args); }
 
-    Log(...args) {
-        const strs = args.filter((str) => typeof(str) != 'object');
-        const objs = args.filter((str) => typeof(str) == 'object');
-        console.log(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a) => Logger.white(a)).join(' '));
-        if(objs.length) objs.forEach((obj) => console.log('^4', obj, '^0'));
+    Log(...args: (string | number | boolean | object)[]) {
+        const strs = args.filter((str: string | number | boolean | object) => typeof(str) != 'object');
+        const objs = args.filter((str: string | number | boolean | object) => typeof(str) == 'object');
+        console.log(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a: any) => Logger.white(a)).join(' '));
+        if(objs.length) objs.forEach((obj: string | number | boolean | object) => console.log('^4', obj, '^0'));
     }
 
-    Warn(...args) {
-        const strs = args.filter((str) => typeof(str) != 'object');
-        const objs = args.filter((str) => typeof(str) == 'object');
-        console.warn(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a) => Logger.yellow(a)).join(' '));
-        if(objs.length) objs.forEach((obj) => console.log('^4', obj, '^0'));
+    Warn(...args: (string | number | boolean | object)[]) {
+        const strs = args.filter((str: string | number | boolean | object) => typeof(str) != 'object');
+        const objs = args.filter((str: string | number | boolean | object) => typeof(str) == 'object');
+        console.warn(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a: any) => Logger.yellow(a)).join(' '));
+        if(objs.length) objs.forEach((obj: string | number | boolean | object) => console.log('^4', obj, '^0'));
     }
 
-    Error(...args) {
-        const strs = args.filter((str) => typeof(str) != 'object');
-        const objs = args.filter((str) => typeof(str) == 'object');
-        console.error(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a) => Logger.red(a)).join(' '));
-        if(objs.length) objs.forEach((obj) => console.log('^4', obj, '^0'));
+    Error(...args: (string | number | boolean | object)[]) {
+        const strs = args.filter((str: string | number | boolean | object) => typeof(str) != 'object');
+        const objs = args.filter((str: string | number | boolean | object) => typeof(str) == 'object');
+        console.error(Logger.cyan(`[${new Date().toLocaleTimeString()}]`), Logger.magenta(`[${this.title}]`), strs.map((a: any) => Logger.red(a)).join(' '));
+        if(objs.length) objs.forEach((obj: string | number | boolean | object) => console.log('^4', obj, '^0'));
     }
 }

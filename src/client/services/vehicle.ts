@@ -24,7 +24,7 @@ export class VehicleService {
         // BUG: якщо на surge кудись врізатись, гра ставить її топливо на 0
         if(GetVehicleFuelLevel(vehicle) == 0 && GetEntityModel(vehicle) == GetHashKey('surge')) {
             
-            new UserInterface().ShowNotification('~b~[Surge] ~r~Hit detected. ~w~Vehicle turns off.');
+            new UserInterface().ShowNotification('~b~[Surge] ~r~Удар обнаружен. ~w~Транспорт выключается.');
             
             SetVehicleFuelLevel(vehicle, 20);
             return;
@@ -54,7 +54,7 @@ export class VehicleService {
         const levelPanel = main.AddPanel('levelPanel', 'horizontal');
         levelPanel.AddText('fuelLevel', 'Fuel level:');
         levelPanel.AddFloat('levelFloat', this.CurrentVehicleFuelLevel, 0, this.CurrentVehicleMaxFuelLevel, 1, { override: `%L / ${this.CurrentVehicleMaxFuelLevel}L` })
-            .On('change', (_, value: number) => {
+            .On('change', (_, value: string | number | boolean) => {
                 console.log('DEVSetFuelLevel', vehicleEntity, value, DoesEntityExist(vehicleEntity));
                 if(!DoesEntityExist(vehicleEntity)) return;
                 emitNet(EventName('DEVSetFuelLevel'), NetworkGetNetworkIdFromEntity(vehicleEntity), value);
@@ -111,7 +111,7 @@ export class VehicleService {
         return this.IndividualVehiclesConfig[GetEntityModel(vehicleEntity)];
     }
 
-    SetIndividualVehiclesConfig(cfg) {
+    SetIndividualVehiclesConfig(cfg: Record<string, VehicleConfig>) {
         this.IndividualVehiclesConfig = Object.entries(cfg).reduce((acc, [k,v]) => ({ ...acc, [GetHashKey(k)]: v }), {});
     }
 }

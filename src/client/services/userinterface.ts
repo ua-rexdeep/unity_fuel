@@ -2,10 +2,10 @@ export class UserInterface {
     
     private _nozzleCurrentState = false;
 
-    private NUI(type: 'update', data: { fuelCost: string, fuelTank: string })
-    private NUI(type: 'warn', data: Record<string, never>);
-    private NUI(type: 'status', data: { status: boolean });
-    private NUI(type: string, data: Record<string, any>) {
+    private NUI(type: 'update', data: { fuelCost: string, fuelTank: string }): void
+    private NUI(type: 'warn', data: Record<string, never>): void;
+    private NUI(type: 'status', data: { status: boolean }): void;
+    private NUI(type: string, data: Record<string, any>): void {
         console.log(JSON.stringify({ type, ...(data || {}) }));
         SendNUIMessage({ type, ...(data || {}) });
     }
