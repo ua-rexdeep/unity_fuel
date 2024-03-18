@@ -291,7 +291,10 @@ export class Threads {
                 const rentedLocal = NetworkGetEntityFromNetworkId(rentedVehicleNet);
                 const [rx, ry, rz] = GetEntityCoords(rentedLocal);
                 const distToCar = vDist(px, py, pz, rx, ry, rz);
-                // console.log('dist to rent car', distToCar);
+                
+                if(process.env.NODE_ENV == 'development') {
+                    console.log(`Player(${player}) distance to rent car`,rentedVehicleNet, `${distToCar}m`, `LockState(${GetVehicleDoorLockStatus(rentedLocal)})`);
+                }
 
                 if(GetVehicleDoorLockStatus(rentedLocal) == 2 && distToCar < 15.0) {
                     this.playerService.Notification(player, '~y~[Pegasus keyless] ~g~Транспорт открыт.');

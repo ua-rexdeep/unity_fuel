@@ -1,4 +1,3 @@
-import { Logger } from '../../logger';
 import { EventName, Vector3 } from '../../utils';
 import { FuelPump } from '../models/fuelPump';
 import { HelicopterParkingSlot } from '../models/heliParking';
@@ -25,7 +24,7 @@ export class PlayerService {
 
     // source = -1 for all players to be target
     CreateRopeWithAttachments(source: Source, ropeAttachements: RopeAttachements) {
-        new Logger('CreateRopeWithAttachments', source, ropeAttachements);
+        // new Logger('CreateRopeWithAttachments', source, ropeAttachements);
         emitNet(EventName('CreateRopeWithAttachments'), source, ropeAttachements);
     }
 

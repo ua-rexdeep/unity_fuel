@@ -77,7 +77,7 @@ export class AircraftService {
                 };
 
                 SetVehicleDoorsLocked(vehicle, 2);
-                SetVehicleNumberPlateText(vehicle, `PEGASUS${index+1}`);
+                SetVehicleNumberPlateText(vehicle, `PEGASUS${(+index)+1}`);
             }
         }
     }
@@ -85,8 +85,9 @@ export class AircraftService {
     DeleteMoveCars() {
         for(const [index, rentedCar] of Object.entries(this.rentedMoveCars)) {
             if(rentedCar && !rentedCar.userId) {
+                emit('AdvancedParking:deleteVehicle', NetworkGetEntityFromNetworkId(rentedCar.vehicleNet));
                 DeleteEntity(NetworkGetEntityFromNetworkId(rentedCar.vehicleNet));
-                delete this.rentedMoveCars[+index];
+                this.rentedMoveCars[+index] = null;
             }
         }
     }
@@ -118,7 +119,9 @@ export class AircraftService {
         const player = await this.vRP.getUserSource(userid);
         const rentIndex = Object.entries(this.rentedMoveCars).find(([_, data]) => data?.userId == userid)?.[0];
         if(rentIndex == undefined) throw new PlayerDontHaveMoveCarOnRentError(player);
-        DeleteEntity(NetworkGetEntityFromNetworkId(this.rentedMoveCars[+rentIndex]!.vehicleNet));
+        const vehicleLocal = NetworkGetEntityFromNetworkId(this.rentedMoveCars[+rentIndex]!.vehicleNet);
+        emit('AdvancedParking:deleteVehicle', GetVehicleNumberPlateText(vehicleLocal));
+        DeleteEntity(vehicleLocal);
         this.rentedMoveCars[+rentIndex] = null;
         this.logger.Log('Move car rent cancelled for player', player);
         this.playerService.Notification(player, '~y~[Pegasus] ~r~Временный транспорт забрал работник службы.');

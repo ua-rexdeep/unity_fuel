@@ -218,7 +218,7 @@ export class FuelStationService {
             let rid = 0;
             while (this.createObjectReturnPool[rid] != null) rid++;
             this.createObjectReturnPool[rid] = done;
-            console.warn('propInt:CreateObject', player, model, pos.toObject(), rot.toObject(), rid);
+            // console.warn('propInt:CreateObject', player, model, pos.toObject(), rot.toObject(), rid);
             TriggerClientEvent('propInt:CreateObject', player, model, pos.toObject(), rot.toObject(), rid);
         });
     }

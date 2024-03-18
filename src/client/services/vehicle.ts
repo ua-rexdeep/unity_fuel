@@ -6,7 +6,7 @@ export class VehicleService {
     private DegradeFuelLevel = 0;
     public CurrentVehicleFuelLevel = 0;
     public CurrentVehicleMaxFuelLevel = 0;
-    private IndividualVehiclesConfig: Record<number, VehicleConfig> = {};
+    public IndividualVehiclesConfig: Record<number, VehicleConfig> = {};
 
     GetDegradeFuelLevel() {
         return this.DegradeFuelLevel;

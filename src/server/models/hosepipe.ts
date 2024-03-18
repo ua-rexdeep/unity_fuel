@@ -1,9 +1,9 @@
-import {Logger} from '../../logger';
-import {Vector3} from '../../utils';
-import {FuelStationService} from '../services/fuelStationService';
-import {PlayerService} from '../services/playerService';
-import {FuelPump} from './fuelPump';
-import {FuelStation} from './station';
+import { Logger } from '../../logger';
+import { Vector3 } from '../../utils';
+import { FuelStationService } from '../services/fuelStationService';
+import { PlayerService } from '../services/playerService';
+import { FuelPump } from './fuelPump';
+import { FuelStation } from './station';
 
 export interface IHosepipe {
     worldCoords: Vector3,
@@ -151,7 +151,7 @@ export class Hosepipe {
     }
 
     CreateRopeForPlayer(playerService: PlayerService, player: number) {
-        console.log('create rope for player', player, this.GetNozzleNetId(), this.GetSlotNetId(), this.ropeAttachements);
+        // console.log('create rope for player', player, this.GetNozzleNetId(), this.GetSlotNetId(), this.ropeAttachements);
         playerService.CreateRopeWithAttachments(player, this.ropeAttachements!);
         this.playersInRange.push(player);
     }

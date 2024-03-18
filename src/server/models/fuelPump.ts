@@ -219,8 +219,12 @@ export class FuelPump {
 
         if (hosepipe.GetPlayer() == source) {
             hosepipe.DeleteNozzle();
+            const countOfBusySlots = this.GetAllHosepipes().filter((hsp) => hsp?.IsTakenOut()).length || 0;
+
+            const nextSlot = (this.GetReplaceData()?.replace.length == 2 && countOfBusySlots == 1) ? (hosepipeIndex == 1 ? 0 : 1) : hosepipeIndex; // * https://unityrp.atlassian.net/browse/URP-33
+
             this.playerService.OnPlayerDropNozzle(source);
-            this.UpdatePumpModelBySlot(hosepipeIndex).then((newPumpNetId: number) => {
+            this.UpdatePumpModelBySlot(nextSlot).then((newPumpNetId: number) => {
                 const propIntAPI = new PropInteractionAPI();
                 setTimeout(() => this.SetBusy(false));
                 propIntAPI.DisableEntityDespawn(newPumpNetId, false);
