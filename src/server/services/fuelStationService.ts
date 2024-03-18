@@ -13,6 +13,14 @@ export class FuelStationService {
     private createObjectReturnPool: Record<number, any> = {};
     private PumpReplaceData: FuelPumpReplaceData[] = [];
 
+    private readonly queries: {
+        getJerryCanItems: () => Promise<{idname:string,addon:Record<string,any>,name:string,description:string,weight:number}[]>,
+        updateJerryCanItem: ({ idname, content }: { idname: string, content: string }) => Promise<any>,
+        doesItemExistsOnAnyChest: ({ idname }: { idname: string }) => Promise<{ count: number }[]>
+        doesItemExistsOnAnyInventory: ({ idname }: { idname: string }) => Promise<{ count: number }[]>,
+        deleteJerryCan: ({ idname }: { idname: string }) => Promise<void>,
+    };
+
     constructor(
         private readonly vRP: vRPServerFunctions,
         private readonly vRPClient: vRPClientFunctions,
@@ -21,16 +29,35 @@ export class FuelStationService {
         private readonly essenceService: FuelEssenceService
     ) {
 
-        vRP.addItemListener('wbody|WEAPON_PETROLCAN', 'equipWeapon', async (player, itemdata) => {
-            const userid = await vRP.getUserId(player);
-            vRP.updateUserDataTable(userid, {jerryCanWeaponData: itemdata});
+        this.queries = {
+            getJerryCanItems: this.MySQL.Command<void, {idname:string,addon:Record<string,any>,name:string,description:string,weight:number}>('SELECT * FROM vrp_items WHERE idname LIKE \'jerryCan_%\''),
+            updateJerryCanItem: this.MySQL.Command<{ idname: string, content: string }>('UPDATE vrp_items SET addon = @content where idname = @idname;'),
+            doesItemExistsOnAnyChest: this.MySQL.Command<{ idname: string }, { count: number }>('SELECT COUNT(*) AS count FROM vrp_srv_data WHERE dvalue LIKE @idname'),
+            doesItemExistsOnAnyInventory: this.MySQL.Command<{ idname: string }, { count: number }>('SELECT COUNT(*) AS count FROM vrp_user_data WHERE dkey = \'vRP:datatable\' and dvalue LIKE @idname'),
+            deleteJerryCan: this.MySQL.Command<{ idname: string }, void>('DELETE FROM vrp_items WHERE idname = @idname;'),
+        };
+
+        this.queries.getJerryCanItems().then((items) => {
+            items.forEach(async ({ addon, idname }) => {
+
+                const [{ count: ExistsOnChestCount }] = await this.queries.doesItemExistsOnAnyChest({ idname: `%${idname}%` });
+                const [{ count: ExistsOnInventoryCount }] = await this.queries.doesItemExistsOnAnyInventory({ idname: `%${idname}%` });
+                if(ExistsOnChestCount == 0 && ExistsOnInventoryCount == 0) {
+                    console.warn(`CLEANUP JERRY CAN: ${idname} CAUSE OF NOT EXISTS ON ANY INVENTORY OR CHEST`);
+                    this.queries.deleteJerryCan({ idname });
+                } else this.DefineJerryCan(idname.split('_')[1], { ...addon, itemid: idname.split('_')[1] });
+            });
         });
+
         vRP.addItemListener('wbody|WEAPON_PETROLCAN', 'storeWeapon', async (player) => {
             const userid = await vRP.getUserId(player);
             const datatable = await vRP.getUserDataTable(userid);
+            console.log('store', datatable?.jerryCanWeaponData);
             if (datatable?.jerryCanWeaponData) {
                 await vRP.tryGetInventoryItem(userid, 'wbody|WEAPON_PETROLCAN', 1, false);
-                await vRP.giveInventoryItem(userid, 'wbody|WEAPON_PETROLCAN', 1, false, datatable?.jerryCanWeaponData);
+                await vRP.giveInventoryItem(userid, `jerryCan_${datatable.jerryCanWeaponData.itemid}`, 1, false);
+                this.DefineJerryCan(datatable.jerryCanWeaponData.itemid, datatable.jerryCanWeaponData); // redefine vrp item to use actual description and weight
+                this.queries.updateJerryCanItem({ content: JSON.stringify(datatable.jerryCanWeaponData), idname: `jerryCan_${datatable.jerryCanWeaponData.itemid}` }); // update vrp_items, set actual petrol
             }
         });
 
@@ -40,6 +67,32 @@ export class FuelStationService {
                 this.MySQL.CreateFuelPumpsTable();
             }
         });
+    }
+
+    DefineJerryCan(itemid: string, content: { petrol?: number, solvent?: number, itemid: string }) {
+        const weight = (content.petrol||0) * 0.760 + 0.5; // litre * petrol mass + can mass
+        this.vRP.defInventoryItem(`jerryCan_${itemid}`, `<span id="jerryCan_${itemid}" style="color:red;">Канистра</span>`, 
+            `Бензин: ${(content.petrol||0).toFixed(2)}L`, this.GetJerryCanItemChoices(content), parseFloat( weight.toFixed(2) ), {});
+    }
+
+    GetJerryCanItemChoices(addon: Record<string, any>) {
+        return ([idname]: [string]) => {
+            
+            const equip = async (player: number) => {
+                const userid = await this.vRP.getUserId(player);
+                const taken = await this.vRP.tryGetInventoryItem(userid, idname, 1, true);
+                if(taken) {
+                    this.vRPClient.giveWeapons(player, { ['WEAPON_PETROLCAN']: { ammo: 200 } });            
+                    this.vRP.closeMenu(player);
+                    console.log('equip', {jerryCanWeaponData: { ...addon, itemid: idname.split('_')[1] }});
+                    this.vRP.updateUserDataTable(userid, {jerryCanWeaponData: { ...addon, itemid: idname.split('_')[1] }});
+                }
+            };
+    
+            return {
+                ['1. Экипировать']: [equip],
+            };
+        };
     }
 
     CheckAndFetchStations() {
@@ -248,7 +301,10 @@ export class FuelStationService {
             if (!hasJerryCan && !hasWeaponJerryCan) {
                 this.playerService.OpenPaymentMenu(player, -10.0, station.brand).then(async ([ok]) => {
                     if (ok) {
-                        this.vRP.giveInventoryItem(userid, 'wbody|WEAPON_PETROLCAN', 1, true, {petrol: 0, solvent: 0});
+                        const itemid = Date.now();
+                        await this.vRP.createItem('item', `jerryCan_${itemid}`, 'Канистра', '', 2.5);
+                        this.DefineJerryCan(itemid.toString(), { itemid: itemid.toString() });
+                        this.vRP.giveInventoryItem(userid, `jerryCan_${itemid}`, 1, true, {petrol: 0, solvent: 0, itemid: itemid});
                         this.vRP.closeMenu(player);
                     } else {
                         this.vRPClient.notify(player, '~r~Недостаточно денег');

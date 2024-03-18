@@ -186,7 +186,8 @@ export class FuelStationHandler {
         }
 
         if (!this.essenceService.GetPlacedJerryCan(jerryCanNet)) {
-            this.essenceService.AddPlacedJerryCan(jerryCanNet, {petrol: 0, solvent: 0});
+            throw new Error('cannot insert nozzle into undefined jerry can');
+            // this.essenceService.AddPlacedJerryCan(jerryCanNet, {petrol: 0, solvent: 0});
         }
 
         hosepipe.SetJerryCan(jerryCanNet);
@@ -268,7 +269,10 @@ export class FuelStationHandler {
         console.log('OnPropPickup', entityNet, jerryCanData);
         if (jerryCanData) {
             this.playerService.UpdatePlayerDataTable(player, {
-                jerryCanWeaponData: jerryCanData.content,
+                jerryCanWeaponData: {
+                    ...jerryCanData.content,
+                    itemid: jerryCanData.itemid,
+                },
             });
             this.essenceService.DeletePlacedJerryCan(entityNet);
         }
@@ -278,7 +282,7 @@ export class FuelStationHandler {
         const player = global.source;
         console.log('OnPlayerPlaceJerryCan', player, entityNet);
         const {jerryCanWeaponData} = await this.playerService.GetPlayerDataTable(player);
-        if (!jerryCanWeaponData) this.essenceService.AddPlacedJerryCan(entityNet, {petrol: 0, solvent: 0});
+        if (!jerryCanWeaponData) throw new Error('cant place undefined jerry can');
         else this.essenceService.AddPlacedJerryCan(entityNet, jerryCanWeaponData);
 
         void this.playerService.UpdatePlayerDataTable(player, {

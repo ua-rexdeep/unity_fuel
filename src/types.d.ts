@@ -11,7 +11,7 @@ type vRPServerFunctions = {
         id_name: string,
         name: string,
         description: string,
-        choices: (item_id: string) => Record<string, [(source: number, choiceName: string) => unknown], string?>,
+        choices: ([item_id]: [string]) => Record<string, [(source: number, choiceName: string) => unknown], string?>,
         weight: number,
         listeners: Record<string, (source: number, idname: string) => unknown>): Promise<void>,
     getUserDataTable(userId: UserId): Promise<UserDataTable>,
@@ -50,6 +50,7 @@ type vRPClientFunctions = {
     setGPS(source: number, x: number, y: number): Promise<void>,
     setBlipRoute(source: number, id: boolean): Promise<void>,
     addEntityBlip(source: number, entityNet: number, idtype: number, idcolor: number,text: string, rotation?: number): Promise<number>,
+    giveWeapons(source: number, weapons: Record<string, { ammo: number }>): Promise<void>,
 }
 
 type UserDataTable = {
@@ -71,6 +72,7 @@ type UserDataTable = {
     jerryCanWeaponData: null | {
         petrol?: number,
         solvent?: number,
+        itemid: string,
     }
 }
 

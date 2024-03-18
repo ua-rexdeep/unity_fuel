@@ -31,6 +31,7 @@ type JerryCanData = {
     },
     valuePerUnit: number,
     fuelToRefill: number,
+    itemid: string,
     playerPayMethod: null | string, // null - money, string - bankCard
 }
 
@@ -101,12 +102,13 @@ export class FuelEssenceService {
         return this.Vehicles[vehicleNet];
     }
 
-    AddPlacedJerryCan(jerryCanNet: number, content: { petrol?: number, solvent?: number }) {
+    AddPlacedJerryCan(jerryCanNet: number, content: { petrol?: number, solvent?: number, itemid: string }) {
         this.PlacedJerryCans[jerryCanNet] = {
             content: {
                 petrol: content.petrol || 0.00,
                 solvent: content.solvent || 0.00,
             },
+            itemid: content.itemid,
             totalRefilled: 0,
             gasPump: null,
             playerRefilling: null,
@@ -268,7 +270,8 @@ export class FuelEssenceService {
 
     RequestJerryCanRefuel(player: number, hosepipe: Hosepipe, jerryCanNet: number, valuePerUnit: number) {
         if (!this.GetPlacedJerryCan(jerryCanNet)) {
-            this.AddPlacedJerryCan(jerryCanNet, {petrol: 0, solvent: 0});
+            throw new Error('Cannot refuel undefined jerry can');
+            // this.AddPlacedJerryCan(jerryCanNet, {petrol: 0, solvent: 0});
         }
 
         const {content, refuelInterval} = this.GetPlacedJerryCan(jerryCanNet);
