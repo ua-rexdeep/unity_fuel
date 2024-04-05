@@ -74,17 +74,16 @@ export class HosepipeService {
         const ped = GetPlayerPed(-1);
         if((IsEntityAttachedToAnyVehicle(nozzleId) && NetworkGetEntityOwner(nozzleId) != PlayerId())) {
             emitNet(EventName('RequestDetachNozzle'), NetworkGetNetworkIdFromEntity(nozzleId));
-            for(let i = 0; i < 10; i++) {
-                if(NetworkGetEntityOwner(nozzleId) == PlayerId()) break;
-                await Wait(100);
-            }
-            if(NetworkGetEntityOwner(nozzleId) != PlayerId()) {
-                this.logger.Error('Cant get entity owner');
-                return;
-            }
+            
+            while(IsEntityAttachedToAnyVehicle(nozzleId)) await Wait(10);
+            // await this.entityService.RequestEntityControl(nozzleId);
         }
         if(NetworkGetEntityOwner(nozzleId) != PlayerId()) {
-            nozzleId = await this.entityService.RequestEntityControl(nozzleId);
+            nozzleId = await this.entityService.RequestEntityControl(nozzleId, [], false);
+            if(NetworkGetEntityOwner(nozzleId) != PlayerId()) {
+                emitNet(EventName('CantAttachNozzle'), NetworkGetNetworkIdFromEntity(nozzleId));
+                return console.error('AttachToPlayer Cant attach because cant take control');
+            }
         }
         DetachEntity(nozzleId, true, true);
         AttachEntityToEntity(nozzleId, ped, 
@@ -97,12 +96,17 @@ export class HosepipeService {
         return nozzleId;
     }
 
-    AttachToEntity(nozzleEntity: number, entNetid: number, fuelCupOffset: { x: number, y: number, z: number }, vehicleConfig: VehicleConfig | null) {
-        const nozzleId = NetworkGetEntityFromNetworkId(nozzleEntity);
+    async AttachToEntity(nozzleNet: number, entNetid: number, fuelCupOffset: { x: number, y: number, z: number }, vehicleConfig: VehicleConfig | null) {
+        const nozzleId = NetworkGetEntityFromNetworkId(nozzleNet);
         const entityId = NetworkGetEntityFromNetworkId(entNetid);
         const IsEntityAJerryCan = GetEntityModel(entityId) == GetHashKey('prop_jerrycan_01a');
 
-        this.entityService.RequestEntityControl(nozzleId, [entNetid]);
+        await this.entityService.RequestEntityControl(nozzleId, [entNetid], false);
+
+        if(NetworkGetEntityOwner(NetworkGetEntityFromNetworkId(entNetid)) != PlayerId()) {
+            emitNet(EventName('CantAttachNozzle'), nozzleNet);
+            return console.error('AttachToEntity Cant attach because cant take control');
+        }
 
         let { x: nozRotX, y: nozRotY, z: nozRotZ } = vehicleConfig?.refillNozzleRotation || new Vector3(-125.0, -90.0, -90.0);
         if(IsEntityAJerryCan) {

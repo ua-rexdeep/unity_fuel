@@ -1,9 +1,10 @@
 import { Logger } from '../../logger';
-import { EventName, vDist, Vector3 } from '../../utils';
+import { EventName, vDist, Vector3, Wait } from '../../utils';
 import { AircraftService } from '../services/aircraftService';
 import { FuelEssenceService } from '../services/fuelEssenceService';
 import { FuelStationService } from '../services/fuelStationService';
 import { PlayerService } from '../services/playerService';
+import { PropInteractionAPI } from '../services/propInteraction';
 
 export class FuelStationHandler {
     private readonly logger = new Logger('FuelStationHandler');
@@ -37,6 +38,8 @@ export class FuelStationHandler {
         onNet(EventName('GetPumpNumberById'), this.GetPumpNumberById.bind(this));
         onNet(EventName('ConnectFuelTruckToAircraft'), this.ConnectFuelTruckToAircraft.bind(this));
         onNet(EventName('ToggleFuelTruckRefuel'), this.ToggleFuelTruckRefuel.bind(this));
+
+        onNet(EventName('CantAttachNozzle'), this.CantAttachNozzle.bind(this));
 
         on(EventName('Config'), this.OnConfigReceived.bind(this));
 
@@ -95,8 +98,9 @@ export class FuelStationHandler {
 
     private async OnPickupNozzle(entityNet: number) {
         this.ACTION_ID++;
+        const source = global.source;
 
-        if (this.service.GetHosepipeIsPlayerHold(global.source)) {
+        if (this.service.GetHosepipeIsPlayerHold(source)) {
             return this.playerService.Notification(source, '~r~Вы уже держите пистолет');
         }
 
@@ -110,7 +114,7 @@ export class FuelStationHandler {
             }
         }
 
-        emitNet(EventName('PickupNozzle'), global.source, entityNet);
+        emitNet(EventName('PickupNozzle'), source, entityNet);
 
         if (!hosepipe) throw new Error('Hosepipe is null');
         if (hosepipe.GetVehicle()) {
@@ -125,7 +129,7 @@ export class FuelStationHandler {
         }
 
         hosepipe.SetPlayer(source);
-        this.playerService.OnPlayerHoldsNozzle(global.source, entityNet);
+        this.playerService.OnPlayerHoldsNozzle(source, entityNet);
     }
 
     private async OnInsertNozzleIntoVehicle(vehicleNet: number, fuelCupOffset: { x: number, y: number, z: number }) {
@@ -160,6 +164,7 @@ export class FuelStationHandler {
         const vehicleOwner = NetworkGetEntityOwner(NetworkGetEntityFromNetworkId(vehicleNet));
         if (vehicleOwner != source) {
             emitNet(EventName('RequestDetachNozzle'), source, hosepipe.GetNozzleNetId());
+            await Wait(10);
             emitNet(EventName('InsertNozzleIntoEntity'), vehicleOwner, hosepipe.GetNozzleNetId(), vehicleNet, fuelCupOffset);
         } else {
             emitNet(EventName('InsertNozzleIntoEntity'), source, hosepipe.GetNozzleNetId(), vehicleNet, fuelCupOffset);
@@ -334,5 +339,13 @@ export class FuelStationHandler {
 
     private ToggleFuelTruckRefuel(truckNet: number) {
         this.aircraftService.ToggleFuelTruckRefuel(global.source, truckNet);
+    }
+
+    CantAttachNozzle(nozzleNetId: number) {
+        const hosepipe = this.service.GetHosepipeFromNozzle(nozzleNetId);
+        if(!hosepipe) throw new Error('no hosepipe');
+        console.error('CantAttachNozzle', nozzleNetId);
+        hosepipe.SetDropped();
+        this.playerService.OnPlayerDropNozzle(global.source);
     }
 }

@@ -5,7 +5,7 @@ export class EntityService {
     constructor(
         private readonly vRPClient: Record<string, (...args: unknown[]) => Promise<void>>,
     ){}
-    async RequestEntityControl(object: number, bucketReserveNetEntities: number[] = []) {
+    async RequestEntityControl(object: number, bucketReserveNetEntities: number[] = [], allowBucketMethod = true) {
         const logger = new Logger('RequestEntityControl', object, `reserved(${bucketReserveNetEntities.join(', ')})`);
         logger.Log('^4 RequestEntityControl', object, NetworkGetNetworkIdFromEntity(object), NetworkGetEntityIsNetworked(object));
         if(!DoesEntityExist(object)) {
@@ -29,7 +29,7 @@ export class EntityService {
         }
 
         // -- second method for requesting entity control. using buckets
-        if(!NetworkHasControlOfEntity(object)) {
+        if(!NetworkHasControlOfEntity(object) && allowBucketMethod) {
             const bucketReserved = [netid, ...bucketReserveNetEntities];
             if(IsEntityAttached(object)) { // -- якщо сутність приєднана, власність розповсюджується від батьківської
                 bucketReserved.push(NetworkGetNetworkIdFromEntity(GetEntityAttachedTo(object)));
