@@ -15,8 +15,10 @@ export class Threads {
         private readonly aircraftService: AircraftService,
     ){
         this.Create('NozzleTooFarFromPump', this.NozzleTooFarFromPump.bind(this), 100);
-        // this.Create('StationsLogger', this.StationsLogger.bind(this), 50);
-        this.Create('VehicleFuelLogger', this.VehicleFuelLogger.bind(this), 1000);
+        if(process.env.NODE_ENV == 'development') {
+            this.Create('StationsLogger', this.StationsLogger.bind(this), 50);
+            this.Create('VehicleFuelLogger', this.VehicleFuelLogger.bind(this), 1000);
+        }
         this.Create('FuelEssence', this.FuelEssence.bind(this), 1000);
         this.Create('FuelStationViewDisplay', this.FuelStationViewDisplay.bind(this), 1000);
         this.Create('SelectedWeapon', this.SelectedWeapon.bind(this), 100);
@@ -128,7 +130,7 @@ export class Threads {
             this.mileage.lastCoords = new Vector3(x,y,z);
 
             emitNet('propInt::Debugger', player, {
-                id: 'cm:2',
+                id: 'cm:3',
                 text: `Vehicle(${vehicleNet}) | Fuel: ${this.essenceService.GetVehicleFuel(vehicleNet)?.toFixed(2)}/${this.essenceService.GetVehicleMaxFuel(vehicleNet)} | Meliage: ${(this.mileage.meliage / 1000).toFixed(2)} km`,
                 entity: 0,
                 left: 200,

@@ -63,7 +63,7 @@ export class FuelEssenceService {
                 fuelLevel: number
             }>('select `fuelLevel` from vrp_user_vehicles where `vehicle_plate` = @plate;'),
         };
-        const AlterFuelColumn = MySQL.Command('ALTER TABLE vrp_user_vehicles ADD COLUMN fuelLevel FLOAT NOT NULL DEFAULT 0');
+        const AlterFuelColumn = MySQL.Command('ALTER TABLE vrp_user_vehicles ADD COLUMN fuelLevel FLOAT NOT NULL DEFAULT -1');
 
         this.MySQL.IsTableColumnExists('vrp_user_vehicles', 'fuelLevel').then((exists) => {
             if (!exists) AlterFuelColumn();
@@ -89,7 +89,10 @@ export class FuelEssenceService {
 
             this.queries.FetchVehicleFuel({plate: GetVehicleNumberPlateText(NetworkGetEntityFromNetworkId(vehicleNet))}).then(([vehicle_row]) => {
                 if (!vehicle_row) this.SetVehicleFuel(vehicleNet, Math.random() * (20 - 5) + 5);
-                else this.SetVehicleFuel(vehicleNet, vehicle_row.fuelLevel);
+                else {
+                    if(vehicle_row.fuelLevel == -1) vehicle_row.fuelLevel = this.GetVehicleMaxFuel(vehicleNet);
+                    this.SetVehicleFuel(vehicleNet, vehicle_row.fuelLevel);
+                }
             });
         }
 
