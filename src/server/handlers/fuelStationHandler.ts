@@ -222,6 +222,7 @@ export class FuelStationHandler {
         this.service.OpenWorkerInteractMenu(global.source, this.playerService.GetPlayerLastVehicle(global.source));
     }
 
+    private ElecticPumpSpawnLocations: any = [];
     private OnConfigReceived(config: ServerConfig) {
         this.ACTION_ID++;
         this.essenceService.SetEssenceTable(config.EssenceTable);
@@ -229,8 +230,12 @@ export class FuelStationHandler {
         this.essenceService.SetVehiclesIndividualData(config.IndividualVehicleData);
         this.service.SetReplacePumpConfig(config.PumpsReplaceData);
 
-        const [firstPlayer] = this.playerService.GetPlayers();
-        if (firstPlayer) this.service.CreateElectricPumpProps(firstPlayer, config.ElecticPumpSpawnLocations);
+        this.ElecticPumpSpawnLocations = config.ElecticPumpSpawnLocations;
+        
+        if(process.env.NODE_ENV == 'development') {
+            const [firstPlayer] = this.playerService.GetPlayers();
+            if (firstPlayer) this.service.CreateElectricPumpProps(firstPlayer, config.ElecticPumpSpawnLocations);
+        }
     }
 
     private async RequestDetachNozzle(nozzleNet: number) {
@@ -259,7 +264,7 @@ export class FuelStationHandler {
 
     private async playerSpawn(_: void, player: number) {
         this.logger.Log('playerSpawn', player);
-        this.service.CreateElectricPumpProps(player);
+        this.service.CreateElectricPumpProps(player, this.ElecticPumpSpawnLocations);
     }
 
     private async OnPropPickup(entityNet: number) {

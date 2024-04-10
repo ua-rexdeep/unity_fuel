@@ -374,7 +374,6 @@ export class FuelStationService {
                     break;
                 }
             }
-            console.log('CreateElectricPumpProps', found);
 
             if(!found) {
                 this.CreateClientObject(player, 'prop_electro_airunit01', Vector3.fromXYZ(station.position), station.rotitation ? Vector3.fromXYZ(station.rotitation) : new Vector3(0,0,0));

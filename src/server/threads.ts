@@ -16,8 +16,8 @@ export class Threads {
     ){
         this.Create('NozzleTooFarFromPump', this.NozzleTooFarFromPump.bind(this), 100);
         if(process.env.NODE_ENV == 'development') {
-            this.Create('StationsLogger', this.StationsLogger.bind(this), 50);
-            this.Create('VehicleFuelLogger', this.VehicleFuelLogger.bind(this), 1000);
+            // this.Create('StationsLogger', this.StationsLogger.bind(this), 50);
+            // this.Create('VehicleFuelLogger', this.VehicleFuelLogger.bind(this), 1000);
         }
         this.Create('FuelEssence', this.FuelEssence.bind(this), 1000);
         this.Create('FuelStationViewDisplay', this.FuelStationViewDisplay.bind(this), 1000);
