@@ -181,7 +181,10 @@ export class FuelEssenceService {
 
     GetVehicleFuelData(vehicleNet: number) {
         const vehicleModel = GetEntityModel(NetworkGetEntityFromNetworkId(vehicleNet));
-        return this.VehicleIndividualData[vehicleModel] || this.VehicleClassesData[this.Vehicles[vehicleNet].class];
+        return {
+            ...this.VehicleClassesData[this.Vehicles[vehicleNet].class],
+            ...this.VehicleIndividualData[vehicleModel],
+        };
     }
 
     IsVehicleElectic(vehicleNet: number) {
