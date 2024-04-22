@@ -332,9 +332,10 @@ export class FuelEssenceService {
             this.SaveVehicleFuel(vehicleNet);
             return;
         }
+        const fuelRefillSpeedMultiplier = 2.5; // TODO: move into config
         const vehicleMaxFuel = this.GetVehicleMaxFuel(vehicleNet);
         this.logger.Log('RefillProcess maxFuel:', vehicleMaxFuel, vehicleData.gasPump!.IsElectric());
-        const rndToAdd = (Math.random() * (3 - 1) + 1) / (vehicleData.gasPump?.IsElectric() ? 100 : 10);
+        const rndToAdd = (Math.random() * (3 - 1) + 1) / (vehicleData.gasPump?.IsElectric() ? 100 : (10 * fuelRefillSpeedMultiplier));
         this.logger.Log('RefillProcess', `${vehicleData.fuel} + ${rndToAdd} > ${vehicleMaxFuel}`);
 
         if (vehicleData.fuel + rndToAdd > vehicleMaxFuel) { // next fuel value bigger then max vehicle fuel

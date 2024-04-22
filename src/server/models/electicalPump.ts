@@ -1,3 +1,4 @@
+import { FuelEssenceService } from '../services/fuelEssenceService';
 import { FuelStationService } from '../services/fuelStationService';
 import { MySQLService } from '../services/mysqlService';
 import { PlayerService } from '../services/playerService';
@@ -13,9 +14,10 @@ export class ElecticalPump extends FuelPump {
         station: FuelStation | null,
         public readonly brandName: string,
         MySQL: MySQLService,
+        essence: FuelEssenceService,
         initData: IFuelPump,
     ) {
-        super(service, playerService, station, brandName, MySQL, initData);
+        super(service, playerService, station, brandName, MySQL, essence, initData);
         this.houseId = initData.houseId;
     }
 

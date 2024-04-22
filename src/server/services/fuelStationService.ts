@@ -100,7 +100,7 @@ export class FuelStationService {
             if (table_exists) {
                 this.MySQL.FetchAllFuelStations().then((stations) => {
                     for (const station of stations) {
-                        const fuelStation = new FuelStation(this, this.playerService, this.MySQL, station);
+                        const fuelStation = new FuelStation(this, this.playerService, this.MySQL, this.essenceService, station);
                         this.stations.push(fuelStation);
                     }
                 });
@@ -114,7 +114,7 @@ export class FuelStationService {
         const {insertId} = await this.MySQL.InsertFuelStation(dto);
 
         const [init] = await this.MySQL.FetchFuelStationById(insertId);
-        const station = new FuelStation(this, this.playerService, this.MySQL, init);
+        const station = new FuelStation(this, this.playerService, this.MySQL, this.essenceService, init);
         this.stations.push(station);
         return station;
     }

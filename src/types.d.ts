@@ -28,6 +28,7 @@ type vRPServerFunctions = {
     registerMenuBuilder(menuName: string, registration: (add, data: ({ player: number })) => void),
     buildMenu(menuName: string, data: { player: number }, builder: (menudata: any) => void),
     prompt(source: number, title: string, placeholder: string, cb: (player: number, value: string) => void),
+    request(source: number, title: string, time: number, cb: (source: number, ok: boolean) => void),
     giveMoney(userid: UserId, value: number),
     tryPayment(userid: UserId, value: number): Promise<boolean>,
     getMoney(userid: UserId): Promise<number>,

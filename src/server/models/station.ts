@@ -1,4 +1,5 @@
 import { Logger } from '../../logger';
+import { FuelEssenceService } from '../services/fuelEssenceService';
 import { FuelStationService } from '../services/fuelStationService';
 import { MySQLService } from '../services/mysqlService';
 import { PlayerService } from '../services/playerService';
@@ -44,6 +45,7 @@ export class FuelStation {
         private readonly service: FuelStationService,
         private readonly playerService: PlayerService,
         private readonly MySQL: MySQLService,
+        private readonly essence: FuelEssenceService,
         {id, x, y, fuel, owner, brand, address, fuelCost, electricityCost, isElecticParking}: IFuelStation,
     ) {
         this.logger = new Logger(`FuelStation(${id})`);
@@ -61,8 +63,8 @@ export class FuelStation {
         this.MySQL.FetchStationFuelPumps(id).then((pumps) => {
             for (const init of pumps) {
                 let pump;
-                if(init.isElectical) pump = new ElecticalPump(this.service, this.playerService, this, this.brand, this.MySQL, init);
-                else pump = new FuelPump(this.service, this.playerService, this, this.brand, this.MySQL, init);
+                if(init.isElectical) pump = new ElecticalPump(this.service, this.playerService, this, this.brand, this.MySQL, this.essence, init);
+                else pump = new FuelPump(this.service, this.playerService, this, this.brand, this.MySQL, this.essence, init);
                 this.pumps.push(pump);
             }
         });
@@ -100,8 +102,8 @@ export class FuelStation {
 
     AddPump(init: IFuelPump) {
         let pump;
-        if(init.isElectical) pump = new ElecticalPump(this.service, this.playerService, this, this.brand, this.MySQL, init);
-        else pump = new FuelPump(this.service, this.playerService, this, this.brand, this.MySQL, init);
+        if(init.isElectical) pump = new ElecticalPump(this.service, this.playerService, this, this.brand, this.MySQL, this.essence, init);
+        else pump = new FuelPump(this.service, this.playerService, this, this.brand, this.MySQL, this.essence, init);
         this.pumps.push(pump);
         return pump;
     }

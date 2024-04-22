@@ -1,5 +1,6 @@
 import { Logger } from '../../logger';
 import { Vector3, Wait } from '../../utils';
+import { FuelEssenceService } from '../services/fuelEssenceService';
 import { FuelStationService } from '../services/fuelStationService';
 import { MySQLService } from '../services/mysqlService';
 import { PlayerService } from '../services/playerService';
@@ -59,6 +60,7 @@ export class FuelPump {
         protected readonly station: FuelStation | null,
         public readonly brandName: string,
         protected readonly MySQL: MySQLService,
+        protected readonly essenceService: FuelEssenceService,
         {id, defaultRotation, netEntity, x, y, z, number}: IFuelPump,
     ) {
         this.logger = new Logger(`FuelPump(${id})`);
@@ -210,11 +212,25 @@ export class FuelPump {
         if (!hosepipe) hosepipe = await this.CreateHosepipe(hosepipeIndex, slotWorldCoords, viewDisplayWorldCoords);
 
         if (hosepipe.IsTakenOut()) {
-            if(hosepipe.GetPlayer() == null || (hosepipe.GetPlayer() != null && hosepipe.GetPlayer() != source)) {
-                this.playerService.Notification(source, '~r~В колонке нет пистолета');
-                setTimeout(() => this.SetBusy(false));
-                return false;
+            if (null != hosepipe.GetVehicle() || null != hosepipe.GetJerryCan()) {
+                if (hosepipe.GetVehicle() && this.essenceService.GetVehicleRefillingData(hosepipe.GetVehicle()!).inProgress) return this.playerService.Request(source, 'Отменить заправку?', 10, ((source, ok) => {
+                    if(ok) this.essenceService.InterruptVehicleRefill(hosepipe!.GetVehicle()!, null, !0);
+                })), void setTimeout((() => this.SetBusy(!1)));
+                if (hosepipe.GetJerryCan() && this.essenceService.GetPlacedJerryCan(hosepipe.GetJerryCan()!).refuelInterval) return this.playerService.Request(source, 'Отменить заправку?', 10, ((source, ok) => {
+                    if(ok) this.essenceService.InterruptJerryCanRefill(hosepipe!.GetJerryCan()!, null, !0);
+                })), void setTimeout((() => this.SetBusy(!1)));
+                const t = await this.playerService.GetPlayerPhoneBankAccount(source);
+                return t?.registerState ? this.playerService.Request(source, 'Оплатить через банк?', 10, ((t, i) => {
+                    if (i)
+                        if (hosepipe?.GetVehicle()) this.essenceService.RequestVehicleRefuel(source, hosepipe.GetVehicle()!, this.station!.GetFuelCost(), this.service);
+                        else {
+                            if (!hosepipe?.GetJerryCan()) throw new Error('Undefined entity that holds nozzle');
+                            this.essenceService.RequestJerryCanRefuel(source, hosepipe, hosepipe.GetJerryCan()!, this.station!.GetFuelCost());
+                        }
+                })) : this.playerService.Notification(source, '~r~Невозможно оплатить через банк'), setTimeout((() => this.SetBusy(!1))), !1;
             }
+            if (null == hosepipe.GetPlayer() || null != hosepipe.GetPlayer() && hosepipe.GetPlayer() != source) 
+                return this.playerService.Notification(source, '~r~В колонке нет пистолета'), setTimeout((() => this.SetBusy(!1))), !1;
         }
 
         if (hosepipe.GetPlayer() == source) {

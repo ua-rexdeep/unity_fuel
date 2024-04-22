@@ -72,6 +72,10 @@ export class PlayerService {
         return new Promise((done) => this.vRP.prompt(player, title, placeholder, done));
     }
 
+    Request(source: number, title: string, time: number, cb: (source: number, ok: boolean) => void) {
+        this.vRP.request(source, title, time, cb);
+    }
+
     async GetPlayerDataTable(player: number) {
         const userid = await this.vRP.getUserId(player);
         return this.vRP.getUserDataTable(userid);
