@@ -376,7 +376,7 @@ export class FuelStationService {
             }
 
             if(!found) {
-                this.CreateClientObject(player, 'prop_electro_airunit01', Vector3.fromXYZ(station.position), station.rotitation ? Vector3.fromXYZ(station.rotitation) : new Vector3(0,0,0));
+                this.CreateClientObject(player, 'prop_electro_airunit01', Vector3.fromXYZ(station.position), station.rotation ? Vector3.fromXYZ(station.rotation) : new Vector3(0,0,0));
             }
         }
     }

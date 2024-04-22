@@ -123,7 +123,7 @@ type FuelPumpReplaceData = {
 }
 type ElecticPumpSpawnLocation = {
     position: XYZ,
-    rotitation: XYZ | null,
+    rotation: XYZ | null,
 };
 type ServerConfig = {
     EssenceTable: EssenceTable,
