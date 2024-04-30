@@ -36,7 +36,7 @@ RegisterCommand('fuel', async (_: number, __: [string], row: string) => {
     }
 
     // eslint-disable-next-line prefer-const
-    let [,vehicleName, ox, oy, oz, , rx, ry, rz] = row.match(/fuel\s(\w+)(\s(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)(\s(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)|)|)/) as (string|number)[];
+    let [,vehicleName, , ox, oy, oz, , rx, ry, rz] = row.match(/fuel\s(\w+)(\s(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)(\s(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)\s*,\s*(\-*\d+[\.\-*\d+]*)|)|)/) as (string|number)[];
 
     if(ox) ox = parseFloat(ox as string);
     if(oy) oy = parseFloat(oy as string);
@@ -48,9 +48,9 @@ RegisterCommand('fuel', async (_: number, __: [string], row: string) => {
     const [px, py, pz] = GetEntityCoords(GetPlayerPed(-1));
     row = row.replace(`fuel ${vehicleName}`, '');
     
+    console.log('Entered:', ox, oy, oz, 'R:', rx, ry, rz);
     if(row.length > 3) {
         [ox, oy, oz] = row.replace(`fuel ${vehicleName}`, '').split(',').map((v) => parseFloat(v.trim()));
-        console.log('spawn', vehicleName, ox, oy, oz);
     }
     if(oz == undefined) {
         const offset = vehicleService.IndividualVehiclesConfig[GetHashKey(vehicleName.toString())]?.refillNozzleOffset;
@@ -63,7 +63,7 @@ RegisterCommand('fuel', async (_: number, __: [string], row: string) => {
     }
     if(rz == undefined) {
         const rotation = vehicleService.IndividualVehiclesConfig[GetHashKey(vehicleName.toString())]?.refillNozzleRotation;
-        console.log(rotation);
+        console.log('CFG rotation', rotation);
         rx = (rotation?.x ?? -125.0);
         ry = (rotation?.y ?? -90.0);
         rz = (rotation?.z ?? -90.0);
