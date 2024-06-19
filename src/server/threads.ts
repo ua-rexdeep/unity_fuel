@@ -261,7 +261,7 @@ export class Threads {
                             this.playerService.AddAirportRestrictedAreaBlips(player, this.aircraftService.GetRestrictedAreaCorners());
                         }
                     }
-                } else {
+                } else if(this.playersVehicle[player] && DoesEntityExist(this.playersVehicle[player])) {
                     const vehicleNet = NetworkGetNetworkIdFromEntity(this.playersVehicle[player]);
                     this.playerService.RemoveVehicleFuelStationBlips(player);
                     this.playerService.RemoveHelicopterFuelParkingBlips(player);

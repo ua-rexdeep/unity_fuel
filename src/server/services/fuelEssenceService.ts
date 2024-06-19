@@ -334,9 +334,9 @@ export class FuelEssenceService {
         }
         const fuelRefillSpeedMultiplier = 2.5; // TODO: move into config
         const vehicleMaxFuel = this.GetVehicleMaxFuel(vehicleNet);
-        this.logger.Log('RefillProcess maxFuel:', vehicleMaxFuel, vehicleData.gasPump!.IsElectric());
+        // this.logger.Log('RefillProcess maxFuel:', vehicleMaxFuel, vehicleData.gasPump!.IsElectric());
         const rndToAdd = (Math.random() * (3 - 1) + 1) / (vehicleData.gasPump?.IsElectric() ? 100 : (10 * fuelRefillSpeedMultiplier));
-        this.logger.Log('RefillProcess', `${vehicleData.fuel} + ${rndToAdd} > ${vehicleMaxFuel}`);
+        // this.logger.Log('RefillProcess', `${vehicleData.fuel} + ${rndToAdd} > ${vehicleMaxFuel}`);
 
         if (vehicleData.fuel + rndToAdd > vehicleMaxFuel) { // next fuel value bigger then max vehicle fuel
             this.InterruptVehicleRefill(vehicleNet, `~b~Транспорт заправлен на ${vehicleData.totalRefilled.toFixed(1)}l. ~r~Больше не поместилось.`, true);
@@ -353,7 +353,7 @@ export class FuelEssenceService {
             vehicleData.fuel += rndToAdd;
             vehicleData.totalRefilled += rndToAdd;
         }
-        this.logger.Log('RefillProcess', vehicleData.fuel.toFixed(1), vehicleData.totalRefilled.toFixed(1));
+        // this.logger.Log('RefillProcess', vehicleData.fuel.toFixed(1), vehicleData.totalRefilled.toFixed(1));
     }
 
     ProcessJerryCanRefill(jerryCanNet: number, fuelToRefill: number) {
@@ -371,7 +371,7 @@ export class FuelEssenceService {
         }
 
         const rndToAdd = (Math.random() * (3 - 1) + 1) / 30;
-        this.logger.Log('RefillProcess', `${content.petrol} + ${rndToAdd} > ${jerryCanMaxFit}`);
+        // this.logger.Log('RefillProcess', `${content.petrol} + ${rndToAdd} > ${jerryCanMaxFit}`);
 
         if (content.petrol + rndToAdd > jerryCanMaxFit) {
             this.InterruptJerryCanRefill(jerryCanNet, `~b~Канистра заправлена на ${totalRefilled.toFixed(1)}l. ~r~Больше не поместилось.`, true);
@@ -391,7 +391,7 @@ export class FuelEssenceService {
         if (this.GetPlacedJerryCan(jerryCanNet)) {
             this.GetPlacedJerryCan(jerryCanNet)!.content.petrol = content.petrol;
         }
-        this.logger.Log('RefillProcess', content.petrol.toFixed(1), totalRefilled.toFixed(1));
+        // this.logger.Log('RefillProcess', content.petrol.toFixed(1), totalRefilled.toFixed(1));
     }
 
     async InterruptVehicleRefill(vehicleNet: number, message: string | null, refundMoney: boolean) {
@@ -464,7 +464,7 @@ export class FuelEssenceService {
                 vehicleData.fuel -= essence;
                 if (vehicleData.fuel < 0) vehicleData.fuel = 0;
 
-                this.logger.Warn('EssenceProcess', vehicleData.fuel.toFixed(1), `essence: ${GetEntitySpeed(vehicleEntity) * 3.6} ->`, essence);
+                // this.logger.Warn('EssenceProcess', vehicleData.fuel.toFixed(1), `essence: ${GetEntitySpeed(vehicleEntity) * 3.6} ->`, essence);
 
                 const driver = GetPedInVehicleSeat(vehicleEntity, -1);
                 const driverPlayer = driver && this.playerService.GetPlayerByPed(driver);

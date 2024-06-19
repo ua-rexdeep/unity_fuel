@@ -119,9 +119,10 @@ export class Threads {
             const PreventFiring = RefillNearestVehicle || this.JerryCanService.GetContentAmount() == 0;
             if(PreventFiring) {
                 DisablePlayerFiring(PlayerId(), true);
+                DisableControlAction(0, 24, true);
             }
 
-            if(IsPedShooting(playerPed)) {
+            if(IsPedShooting(playerPed) || IsDisabledControlPressed(0, 24)) {
                 
                 if(PreventFiring) {
                     ClearPedTasks(playerPed);
@@ -155,7 +156,7 @@ export class Threads {
     private DrawFuelLevel() {
         const playerPed = GetPlayerPed(-1);
         const vehicle = GetVehiclePedIsIn(playerPed, false);
-        if(vehicle && IsVehicleEngineOn(vehicle) && this.vehicleService.CurrentVehicleMaxFuelLevel != 0) {
+        if(vehicle && IsVehicleEngineOn(vehicle) && this.vehicleService.CurrentVehicleMaxFuelLevel != 0 && GetVehicleClass(vehicle) != 13) {
             const map = this.GetMinimapAnchor();
             let percent = (100 / this.vehicleService.CurrentVehicleMaxFuelLevel * this.vehicleService.CurrentVehicleFuelLevel) / 100;
 
