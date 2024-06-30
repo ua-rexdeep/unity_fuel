@@ -119,11 +119,12 @@ export class Threads {
             const PreventFiring = RefillNearestVehicle || this.JerryCanService.GetContentAmount() == 0;
             if(PreventFiring) {
                 DisablePlayerFiring(PlayerId(), true);
-                DisableControlAction(0, 24, true);
+                DisableControlAction(2, 24, true);
+                DisableControlAction(2, 142, true);
+                DisableControlAction(2, 257, true);
             }
 
-            if(IsPedShooting(playerPed) || IsDisabledControlPressed(0, 24)) {
-                
+            if(IsPedShooting(playerPed) || IsDisabledControlPressed(0, 24)) {                
                 if(PreventFiring) {
                     ClearPedTasks(playerPed);
                     return;

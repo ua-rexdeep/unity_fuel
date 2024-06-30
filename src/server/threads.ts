@@ -356,16 +356,16 @@ export class Threads {
             }
         }
 
-        if(this.playersInMoveCarsSpawnRange.size != 0 && nextList.size == 0) {
-            nextList.clear();
-            this.aircraftService.DeleteMoveCars();
-            this.playersInMoveCarsSpawnRange = nextList;
-        }
+        // if(this.playersInMoveCarsSpawnRange.size != 0 && nextList.size == 0) {
+        //     nextList.clear();
+        //     this.aircraftService.DeleteMoveCars();
+        //     this.playersInMoveCarsSpawnRange = nextList;
+        // }
 
-        if(this.playersInMoveCarsSpawnRange.size == 0 && nextList.size != 0) {
-            await this.aircraftService.SpawnMoveCars();
-            this.playersInMoveCarsSpawnRange = nextList;
-        }
+        // if(this.playersInMoveCarsSpawnRange.size == 0 && nextList.size != 0) {
+        //     await this.aircraftService.SpawnMoveCars();
+        //     this.playersInMoveCarsSpawnRange = nextList;
+        // }
 
     }
 }

@@ -86,7 +86,6 @@ export class Handler {
         const playerPed = GetPlayerPed(-1);
         const playerVehicle = GetVehiclePedIsIn(playerPed, false);
         const vehicleEntity = NetworkGetEntityFromNetworkId(vehicleNet);
-        console.log('UPDFUEL', typeof(vehicleNet), vehicleNet, fuel, playerVehicle, vehicleEntity);
 
         SetVehicleFuelLevel(vehicleEntity, fuel == 0 ? 20 : 50);
         if(playerVehicle == vehicleEntity) {

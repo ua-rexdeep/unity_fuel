@@ -62,70 +62,70 @@ export class AircraftService {
         return slot;
     }
     
-    async SpawnMoveCars() {
-        const vehiclesToMove = ['bison', 'dilettante', 'utillitruck3', 'contender'];
+    // async SpawnMoveCars() {
+    //     const vehiclesToMove = ['bison', 'dilettante', 'utillitruck3', 'contender'];
 
-        for(const index in this.MoveCarsSpawnLocations) {
-            const {x,y,z,h} = this.MoveCarsSpawnLocations[index];
-            if(!this.rentedMoveCars[index] || !this.rentedMoveCars[index]!.vehicleNet) {
-                const vehicle = CreateVehicle(vehiclesToMove[(Math.random()*(vehiclesToMove.length + 1) - 1)|0], x, y, z, h || 0.0, true, true);
-                while(!DoesEntityExist(vehicle)) await Wait(100);
-                if(this.rentedMoveCars[index]) this.rentedMoveCars[index]!.vehicleNet = NetworkGetNetworkIdFromEntity(vehicle);
-                else this.rentedMoveCars[index] = {
-                    userId: null,
-                    vehicleNet: NetworkGetNetworkIdFromEntity(vehicle),
-                };
+    //     for(const index in this.MoveCarsSpawnLocations) {
+    //         const {x,y,z,h} = this.MoveCarsSpawnLocations[index];
+    //         if(!this.rentedMoveCars[index] || !this.rentedMoveCars[index]!.vehicleNet) {
+    //             const vehicle = CreateVehicle(vehiclesToMove[(Math.random()*(vehiclesToMove.length + 1) - 1)|0], x, y, z, h || 0.0, true, true);
+    //             while(!DoesEntityExist(vehicle)) await Wait(100);
+    //             if(this.rentedMoveCars[index]) this.rentedMoveCars[index]!.vehicleNet = NetworkGetNetworkIdFromEntity(vehicle);
+    //             else this.rentedMoveCars[index] = {
+    //                 userId: null,
+    //                 vehicleNet: NetworkGetNetworkIdFromEntity(vehicle),
+    //             };
 
-                SetVehicleDoorsLocked(vehicle, 2);
-                SetVehicleNumberPlateText(vehicle, `PEGASUS${(+index)+1}`);
-            }
-        }
-    }
+    //             SetVehicleDoorsLocked(vehicle, 2);
+    //             SetVehicleNumberPlateText(vehicle, `PEGASUS${(+index)+1}`);
+    //         }
+    //     }
+    // }
 
-    DeleteMoveCars() {
-        for(const [index, rentedCar] of Object.entries(this.rentedMoveCars)) {
-            if(rentedCar && !rentedCar.userId) {
-                emit('AdvancedParking:deleteVehicle', NetworkGetEntityFromNetworkId(rentedCar.vehicleNet));
-                DeleteEntity(NetworkGetEntityFromNetworkId(rentedCar.vehicleNet));
-                this.rentedMoveCars[+index] = null;
-            }
-        }
-    }
+    // DeleteMoveCars() {
+    //     for(const [index, rentedCar] of Object.entries(this.rentedMoveCars)) {
+    //         if(rentedCar && !rentedCar.userId) {
+    //             emit('AdvancedParking:deleteVehicle', NetworkGetEntityFromNetworkId(rentedCar.vehicleNet));
+    //             DeleteEntity(NetworkGetEntityFromNetworkId(rentedCar.vehicleNet));
+    //             this.rentedMoveCars[+index] = null;
+    //         }
+    //     }
+    // }
 
-    async PlayerRentMoveCar(player: number): Promise<null | { userId: number, vehicleNet: number }> {
-        const userid = await this.vRP.getUserId(player);
-        const freeVehicles = Object.entries(this.rentedMoveCars).filter(([_, data]) => data && data.vehicleNet && !data.userId && DoesEntityExist(NetworkGetEntityFromNetworkId(data.vehicleNet)));
-        if(freeVehicles.length == 0) {
-            this.vRPClient.notify(player, `~r~Нет свободных машин. ~b~Возврат: $${this.GetMoveCarRentPrice()}`);
-            // TODO: refund car price
-            return null;
-        }
-        else {
-            const [index, freeVehicle] = freeVehicles[(Math.random()*(freeVehicles.length + 1) - 1)|0];
-            if(!freeVehicle) return null;
+    // async PlayerRentMoveCar(player: number): Promise<null | { userId: number, vehicleNet: number }> {
+    //     const userid = await this.vRP.getUserId(player);
+    //     const freeVehicles = Object.entries(this.rentedMoveCars).filter(([_, data]) => data && data.vehicleNet && !data.userId && DoesEntityExist(NetworkGetEntityFromNetworkId(data.vehicleNet)));
+    //     if(freeVehicles.length == 0) {
+    //         this.vRPClient.notify(player, `~r~Нет свободных машин. ~b~Возврат: $${this.GetMoveCarRentPrice()}`);
+    //         // TODO: refund car price
+    //         return null;
+    //     }
+    //     else {
+    //         const [index, freeVehicle] = freeVehicles[(Math.random()*(freeVehicles.length + 1) - 1)|0];
+    //         if(!freeVehicle) return null;
 
-            this.rentedMoveCars[+index]!.userId = userid;
-            // SetVehicleDoorsLocked(NetworkGetEntityFromNetworkId(vehicleNet), 1);
+    //         this.rentedMoveCars[+index]!.userId = userid;
+    //         // SetVehicleDoorsLocked(NetworkGetEntityFromNetworkId(vehicleNet), 1);
     
-            this.vRPClient.addEntityBlip(player, freeVehicle.vehicleNet, 853, 3, '[!] Временный транспорт');
-            this.vRPClient.notify(player, '~y~[Pegasus]: ~w~Временный транспорт помечен на карте.');
-            this.vRPClient.notify(player, '~y~Вы можете пользоваться им, пока идет заправка.');
+    //         this.vRPClient.addEntityBlip(player, freeVehicle.vehicleNet, 853, 3, '[!] Временный транспорт');
+    //         this.vRPClient.notify(player, '~y~[Pegasus]: ~w~Временный транспорт помечен на карте.');
+    //         this.vRPClient.notify(player, '~y~Вы можете пользоваться им, пока идет заправка.');
 
-            return this.rentedMoveCars[+index] as { userId: number, vehicleNet: number } | null;
-        }
-    }
+    //         return this.rentedMoveCars[+index] as { userId: number, vehicleNet: number } | null;
+    //     }
+    // }
 
-    async CancelPlayerRentMoveCar(userid: UserId) {
-        const player = await this.vRP.getUserSource(userid);
-        const rentIndex = Object.entries(this.rentedMoveCars).find(([_, data]) => data?.userId == userid)?.[0];
-        if(rentIndex == undefined) throw new PlayerDontHaveMoveCarOnRentError(player);
-        const vehicleLocal = NetworkGetEntityFromNetworkId(this.rentedMoveCars[+rentIndex]!.vehicleNet);
-        emit('AdvancedParking:deleteVehicle', GetVehicleNumberPlateText(vehicleLocal));
-        DeleteEntity(vehicleLocal);
-        this.rentedMoveCars[+rentIndex] = null;
-        this.logger.Log('Move car rent cancelled for player', player);
-        this.playerService.Notification(player, '~y~[Pegasus] ~r~Временный транспорт забрал работник службы.');
-    }
+    // async CancelPlayerRentMoveCar(userid: UserId) {
+    //     const player = await this.vRP.getUserSource(userid);
+    //     const rentIndex = Object.entries(this.rentedMoveCars).find(([_, data]) => data?.userId == userid)?.[0];
+    //     if(rentIndex == undefined) throw new PlayerDontHaveMoveCarOnRentError(player);
+    //     const vehicleLocal = NetworkGetEntityFromNetworkId(this.rentedMoveCars[+rentIndex]!.vehicleNet);
+    //     emit('AdvancedParking:deleteVehicle', GetVehicleNumberPlateText(vehicleLocal));
+    //     DeleteEntity(vehicleLocal);
+    //     this.rentedMoveCars[+rentIndex] = null;
+    //     this.logger.Log('Move car rent cancelled for player', player);
+    //     this.playerService.Notification(player, '~y~[Pegasus] ~r~Временный транспорт забрал работник службы.');
+    // }
 
     async PlayerRentFuelTruck(player: number){
         const userid = await this.vRP.getUserId(player);
@@ -144,7 +144,7 @@ export class AircraftService {
             return;
         }
         
-        this.PlayerRentMoveCar(player);
+        // this.PlayerRentMoveCar(player);
 
         const cerberus = CreateVehicle('cerberus2', this.FuelTruckSpawnLocation.x,this.FuelTruckSpawnLocation.y, this.FuelTruckSpawnLocation.z, this.FuelTruckSpawnLocation.h!, true, true);
         // SetVehicleDoorsLocked(cerberus, 2);
@@ -397,11 +397,11 @@ export class AircraftService {
 
         if(truckData.refuelInterval) this.ToggleFuelTruckRefuel(player, truckNet);
         
-        this.CancelPlayerRentMoveCar(player).catch((e) => {
-            if(e instanceof PlayerDontHaveMoveCarOnRentError) { console.log('[PlayerStopRentFuelTruck] prevent error due to player dont have rent car'); }
-            else throw e;
-        });
-        DeleteEntity(NetworkGetEntityFromNetworkId(truckNet));
+        // this.CancelPlayerRentMoveCar(player).catch((e) => {
+        //     if(e instanceof PlayerDontHaveMoveCarOnRentError) { console.log('[PlayerStopRentFuelTruck] prevent error due to player dont have rent car'); }
+        //     else throw e;
+        // });
+        // DeleteEntity(NetworkGetEntityFromNetworkId(truckNet));
 
         const remainingFuelCost = truckData.petrol * this.GetAircraftFuelCost();
         if(truckData.firstSeat) { // without service

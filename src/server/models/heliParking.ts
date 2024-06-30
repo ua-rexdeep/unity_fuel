@@ -77,9 +77,9 @@ export class HelicopterParkingSlot {
         if(!vehicleCanBeRefilled) return this.playerService.Notification(player, '~r~Транспорт на слоте парковни не может быть заправлен');
         const aircraftMaxFuel = this.essenceService.GetVehicleMaxFuel(NetworkGetNetworkIdFromEntity(vehicleOnSlot));
 
-        const playerRentCarBefore = await this.aircraftService.GetPlayerRentedMoveCar(player);
-        if(playerRentCarBefore) this.aircraftService.CancelPlayerRentMoveCar(userid);
-        const moveCar = await this.aircraftService.PlayerRentMoveCar(player);
+        // const playerRentCarBefore = await this.aircraftService.GetPlayerRentedMoveCar(player);
+        // if(playerRentCarBefore) this.aircraftService.CancelPlayerRentMoveCar(userid);
+        // const moveCar = await this.aircraftService.PlayerRentMoveCar(player);
         const aircraftCurrentFuel = this.essenceService.GetVehicleFuel(NetworkGetNetworkIdFromEntity(vehicleOnSlot));
 
         this.refuelProcess = {
@@ -117,24 +117,24 @@ export class HelicopterParkingSlot {
         
         const interval = setInterval(() => {
 
-            if(!moveCar || !moveCar.vehicleNet || !DoesEntityExist(NetworkGetEntityFromNetworkId(moveCar.vehicleNet))) {
-                this.aircraftService.CancelPlayerRentMoveCar(userid).catch((_) => {});
-            }
+            // if(!moveCar || !moveCar.vehicleNet || !DoesEntityExist(NetworkGetEntityFromNetworkId(moveCar.vehicleNet))) {
+            //     this.aircraftService.CancelPlayerRentMoveCar(userid).catch((_) => {});
+            // }
 
             // if interrupted or end and player starts engine of vehicle. thats means, player want to leave
-            if(!this.refuelProcess && GetIsVehicleEngineRunning(vehicleOnSlot)) {
-                try { this.aircraftService.CancelPlayerRentMoveCar(userid); } catch(e) {}
-                clearInterval(interval);
-                return;
-            }
+            // if(!this.refuelProcess && GetIsVehicleEngineRunning(vehicleOnSlot)) {
+            //     try { this.aircraftService.CancelPlayerRentMoveCar(userid); } catch(e) {}
+            //     clearInterval(interval);
+            //     return;
+            // }
 
             // if vehicle engine is on - interrupt. prevent player escape from refilling
-            if(this.refuelProcess && GetIsVehicleEngineRunning(vehicleOnSlot)) {
-                try { this.aircraftService.CancelPlayerRentMoveCar(userid); } catch(e) {}
-                this.InterruptRefuel();
-                clearInterval(interval);
-                return;
-            }
+            // if(this.refuelProcess && GetIsVehicleEngineRunning(vehicleOnSlot)) {
+            //     try { this.aircraftService.CancelPlayerRentMoveCar(userid); } catch(e) {}
+            //     this.InterruptRefuel();
+            //     clearInterval(interval);
+            //     return;
+            // }
 
             this.aircraftService.GetPlayerRentedMoveCar(player).then((rentCar) => {
                 if(rentCar == null && !this.refuelProcess) { // no rent car and refilling was interrupted or end
@@ -170,10 +170,10 @@ export class HelicopterParkingSlot {
             else this.playerService.CreateLynxPayment(this.refuelProcess.userid, refund, 'Pegasus');
         }
 
-        this.aircraftService.CancelPlayerRentMoveCar(this.refuelProcess.userid).catch((error) => {
-            if(error instanceof PlayerDontHaveMoveCarOnRentError) { console.log('[InterruptRefuel] Error catch prevented: player dont have move car to cancel'); }
-            else console.error(error);
-        });
+        // this.aircraftService.CancelPlayerRentMoveCar(this.refuelProcess.userid).catch((error) => {
+        //     if(error instanceof PlayerDontHaveMoveCarOnRentError) { console.log('[InterruptRefuel] Error catch prevented: player dont have move car to cancel'); }
+        //     else console.error(error);
+        // });
         this.refuelProcess = null;
     }
 }
