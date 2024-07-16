@@ -37,6 +37,7 @@ type JerryCanData = {
 
 export class FuelEssenceService {
     private readonly logger = new Logger('FuelEssenceService');
+    static readonly MAX_JERRY_CAN_FUEL = 15.00;
     private Vehicles: Record<string, VehicleData> = {}; // cache. видаляє позиції, якщо транспорту більше не існує(ProcessVehiclesFuelEssence)
     private PlacedJerryCans: Record<number, JerryCanData> = {};
     private VehiclesRequests: Record<string, (...any: any[]) => void> = {};
@@ -287,12 +288,12 @@ export class FuelEssenceService {
         }
 
         const totalContentValue = (content.petrol || 0) + (content.solvent || 0);
-        if (totalContentValue >= 5.00) {
+        if (totalContentValue >= FuelEssenceService.MAX_JERRY_CAN_FUEL) {
             this.vRPClient.notify(player, '~r~Канистра не нуждается в заправке.');
             return;
         }
 
-        this.vRP.prompt(player, 'Кол-во топлива для заправки', (5.00 - totalContentValue).toFixed(2), (player, value) => {
+        this.vRP.prompt(player, 'Кол-во топлива для заправки', (FuelEssenceService.MAX_JERRY_CAN_FUEL - totalContentValue).toFixed(2), (player, value) => {
             try {
                 const fuelToRefill = parseFloat(value) * 0.997;
                 if (isNaN(fuelToRefill) || fuelToRefill == 0) return;
@@ -358,7 +359,7 @@ export class FuelEssenceService {
 
     ProcessJerryCanRefill(jerryCanNet: number, fuelToRefill: number) {
         const {playerRefilling, refuelInterval, content, totalRefilled} = this.PlacedJerryCans[jerryCanNet];
-        const jerryCanMaxFit = 5.00;
+        const jerryCanMaxFit = FuelEssenceService.MAX_JERRY_CAN_FUEL;
 
         if (!playerRefilling) throw new Error('player refilling is null');
         if (!refuelInterval) return;
