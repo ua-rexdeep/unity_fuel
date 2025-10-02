@@ -109,7 +109,7 @@ export class HelicopterParkingSlot {
                 } else {
                     this.essenceService.SetVehicleFuel(aircraftNet, newAircraftCurrentFuel! + fuelToRefill);
                     this.playerService.Notification(player, '~g~Транспорт заправлен.');
-                    this.playerService.SendUserPhoneMessage(userid, '555-0122', 'Ваш транспорт в аеропорту Los-Santos был заправлен.');
+                    this.playerService.SendUserPhoneMessage(userid, '555-0122', 'Ваш транспорт в аэропорту Los-Santos был заправлен.');
                 }
                 this.refuelProcess = null;
             }, ((60 * 3) + (aircraftMaxFuel - aircraftCurrentFuel!)) * 1000)

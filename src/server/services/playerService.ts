@@ -133,7 +133,7 @@ export class PlayerService {
         const blips = this.activeBlips[player].helicopterFuelParkings;
         const isSlotBusy = await station.IsAnyVehicleOnSlot();
         const blipId = await this.vRPClient.setNamedBlip(player, `heliFuelParking_${station.id}`,
-            station.x, station.y, 30.2, 542, isSlotBusy ? 1 : 3, 'Паркинг-слот аеропорт');
+            station.x, station.y, 30.2, 542, isSlotBusy ? 1 : 3, 'Паркинг-слот аэропорт');
         blips[`heliFuelParking_${station.id}`] = blipId;
     }
 

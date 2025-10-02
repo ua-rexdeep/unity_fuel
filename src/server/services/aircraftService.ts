@@ -270,10 +270,10 @@ export class AircraftService {
                 `<span style="color:orange;font-weight:bold;">[Недоступно] Заправка вручную через автоцистерну</span><br><br>
 Цена керосина за литр: $${this.GetAircraftFuelCost()}<br>
 Кол-во топлива в цистерне: 500L<br>
-Цена за оренду: $1850<br>
+Цена за аренду: $1850<br>
 Цена за временный транспорт: $${this.GetMoveCarRentPrice()}<br>
 Загалом: <font style="color:orange";>$${fullFuelTruckPrice}</font>`],
-            ['1. Закончить оренду цистерны']: fuelTruckData ? [stopRentFuelTruck, 'Вернем стоимость не использованого топлива'] : undefined,
+            ['1. Закончить аренду цистерны']: fuelTruckData ? [stopRentFuelTruck, 'Вернем стоимость не использованого топлива'] : undefined,
             ['2. Заправка слот #1']: getRefuelSlotMenuData('mainairport_1'),
             ['2. Слот #1 занят']: getRefuelSlotBusyMenuData('mainairport_1'),
             ['2. Прервать заправку слот #1']: getRefuelSlotInterruptMenuData('mainairport_1'),

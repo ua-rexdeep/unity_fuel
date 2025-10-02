@@ -344,7 +344,7 @@ export class Threads {
                     for(const corner of this.aircraftService.GetRestrictedAreaCorners()) {
                         if(vDist(tx, ty, tz, corner.x, corner.y, corner.z) <= 20.0) {
                             this.essenceService.SetVehicleFuel(fuelTruckNet, 0.0);
-                            this.playerService.Notification(player, '~y~[Pegasus] ~r~Топливная цистерна не может выехать из аеропорта.');
+                            this.playerService.Notification(player, '~y~[Pegasus] ~r~Топливная цистерна не может выехать из аэропорта.');
                             this.playerService.Notification(player, '~y~[Pegasus] ~r~Покиньте машину.');
                             setTimeout(() => {
                                 this.aircraftService.UserStopRentFuelTruck(userid);

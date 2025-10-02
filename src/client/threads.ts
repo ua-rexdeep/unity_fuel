@@ -84,7 +84,7 @@ export class Threads {
                 if(GetEntityModel(vehicle) == GetHashKey('cerberus2')) {
                     ClearPrints();
                     SetTextEntry_2('STRING');
-                    AddTextComponentString('~y~Движение разрешено только по ~r~аеропорту~y~.');
+                    AddTextComponentString('~y~Движение разрешено только по ~r~аэропорту~y~.');
                     DrawSubtitleTimed(10_000, true);
                 }
             }
