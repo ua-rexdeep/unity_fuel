@@ -3,7 +3,7 @@ import { GUIButton, GUIFloat, GUIPanel, GetGUI, ImGUI } from '../libs/imgui';
 import { UserInterface } from './userinterface';
 
 export class VehicleService {
-    private DegradeFuelLevel = 0;
+    private DegradeFuelLevel = 0.5;
     public CurrentVehicleFuelLevel = 0;
     public CurrentVehicleMaxFuelLevel = 0;
     public IndividualVehiclesConfig: Record<number, VehicleConfig> = {};
@@ -107,11 +107,45 @@ export class VehicleService {
         }
     }
 
-    GetVehicleRefillConfig(vehicleEntity: number): VehicleConfig | null {
-        return this.IndividualVehiclesConfig[GetEntityModel(vehicleEntity)];
+    private requestedIndividualConfigs: Record<number, (cfg: VehicleConfig) => unknown> = [];
+    // поверне конфігурацію машини, якщо така є в кеші. якщо в кеші немає, і не було запитано - запитує у серверу
+    GetSyncVehicleRefillConfig(vehicleEntity: number): VehicleConfig | null {
+        const model = GetEntityModel(vehicleEntity);
+        if(this.IndividualVehiclesConfig[model]) {
+            // console.log(`[VehicleService - GetSyncVehicleRefillConfig] hash(${model}): ${JSON.stringify(this.IndividualVehiclesConfig[model])}`);
+            return this.IndividualVehiclesConfig[model];
+        } else {
+            console.log(`[VehicleService - GetSyncVehicleRefillConfig] hash(${model}): no config, requested`);
+            emitNet(EventName('RequestVehicleIndividualConfig'), model);
+        }
+        return null;
+    }
+
+    // гарантовано поверне конфігурацію машини, якщо така існує
+    async GetAsyncVehicleRefillConfig(vehicleEntity: number): Promise<VehicleConfig | null> {
+        const model = GetEntityModel(vehicleEntity);
+        if(this.IndividualVehiclesConfig[model]) {
+            // console.log(`[VehicleService - GetAsyncVehicleRefillConfig] hash(${model}): ${JSON.stringify(this.IndividualVehiclesConfig[model])}`);
+            return this.IndividualVehiclesConfig[model];
+        } else {
+            console.log(`[VehicleService - GetAsyncVehicleRefillConfig] hash(${model}): no config, requested`);
+            emitNet(EventName('RequestVehicleIndividualConfig'), model);
+            return new Promise((done) => {
+                this.requestedIndividualConfigs[model] = done;
+            });
+        }
     }
 
     SetIndividualVehiclesConfig(cfg: Record<string, VehicleConfig>) {
         this.IndividualVehiclesConfig = Object.entries(cfg).reduce((acc, [k,v]) => ({ ...acc, [GetHashKey(k)]: v }), {});
+    }
+
+    SetIndividualVehicleConfig(hash: number, cfg: VehicleConfig) {
+        this.IndividualVehiclesConfig[hash] = cfg;
+        console.log(`[VehicleService - SetIndividualVehicleConfig] hash(${hash}): ${JSON.stringify(cfg)}`);
+        if(this.requestedIndividualConfigs[hash]) {
+            this.requestedIndividualConfigs[hash](cfg);
+            delete this.requestedIndividualConfigs[hash];
+        }
     }
 }

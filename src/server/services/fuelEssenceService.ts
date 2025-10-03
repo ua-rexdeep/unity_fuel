@@ -452,20 +452,20 @@ export class FuelEssenceService {
                 vehicleData.fuel = vehicleMaxFuel;
             }
 
-            let essence = 0; // кількість топлива, яка в кінці процедури буде відмінусована
+            let speedEssence = 0; // кількість топлива, яка в кінці процедури буде відмінусована
             const isEngineRunning = GetIsVehicleEngineRunning(vehicleEntity);
             if (isEngineRunning) {
                 const speed = GetEntitySpeed(vehicleEntity) * 3.6;
-                essence = this.GetSpeedEssence(speed); // розхід топлива розраховується на основі швидкості та таблиці конфігурації
+                speedEssence = this.GetSpeedEssence(speed); // розхід топлива розраховується на основі швидкості та таблиці конфігурації
             }
 
-            essence = essence * essenceMultiplier; // мультиплікатор відносно до моделі/класу транспорту
+            const essence = speedEssence * essenceMultiplier; // мультиплікатор відносно до моделі/класу транспорту
 
             if (essence > 0 && (vehicleData.fuel > 0 || isEngineRunning)) {
                 vehicleData.fuel -= essence;
                 if (vehicleData.fuel < 0) vehicleData.fuel = 0;
 
-                // this.logger.Warn('EssenceProcess', vehicleData.fuel.toFixed(1), `essence: ${GetEntitySpeed(vehicleEntity) * 3.6} ->`, essence);
+                this.logger.Warn(`[EssenceProcess] S(${(GetEntitySpeed(vehicleEntity) * 3.6).toFixed(1)}) F(${vehicleData.fuel.toFixed(1)}) SE(${speedEssence})*M(${essenceMultiplier}) = E(${essence})`);
 
                 const driver = GetPedInVehicleSeat(vehicleEntity, -1);
                 const driverPlayer = driver && this.playerService.GetPlayerByPed(driver);

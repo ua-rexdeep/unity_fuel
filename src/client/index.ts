@@ -21,7 +21,7 @@ const jerryCanService = new JerryCanService();
 new Threads(hosepipeService, ropeService, vehicleService, UIService, jerryCanService);
 new Handler(hosepipeService, ropeService, vehicleService, UIService, jerryCanService);
 
-emitNet(EventName('RequestClientConfig'));
+// emitNet(EventName('RequestClientConfig'));
 
 let TestVehicle: number, TestNozzle: number;
 RegisterCommand('fuel', async (_: number, __: [string], row: string) => {
@@ -52,17 +52,20 @@ RegisterCommand('fuel', async (_: number, __: [string], row: string) => {
     if(row.length > 3) {
         [ox, oy, oz] = row.replace(`fuel ${vehicleName}`, '').split(',').map((v) => parseFloat(v.trim()));
     }
+    const cfg = vehicleService.IndividualVehiclesConfig[GetHashKey(vehicleName.toString())];
     if(oz == undefined) {
-        const offset = vehicleService.IndividualVehiclesConfig[GetHashKey(vehicleName.toString())]?.refillNozzleOffset;
+        const offset = cfg?.refillNozzleOffset;
         if(offset) {
             ox = offset.x;
             oy = offset.y;
             oz = offset.z;
-        } else console.error(`No individual config for vehicle ${vehicleName}`);
-
+        } else {
+            console.error(`No individual config for vehicle ${vehicleName}. You must set x,y,z!`);
+            return;
+        }
     }
     if(rz == undefined) {
-        const rotation = vehicleService.IndividualVehiclesConfig[GetHashKey(vehicleName.toString())]?.refillNozzleRotation;
+        const rotation = cfg?.refillNozzleRotation;
         console.log('CFG rotation', rotation);
         rx = (rotation?.x ?? -125.0);
         ry = (rotation?.y ?? -90.0);

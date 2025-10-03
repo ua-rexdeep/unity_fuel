@@ -225,9 +225,10 @@ export class Threads {
         const [px, py, pz] = GetEntityCoords(playerPed);
         for(const vehicle of this.vehicleService.GetAllVehicles()) {
             const [vx, vy, vz] = GetEntityCoords(vehicle);
-            const vehicleRefillConfig = this.vehicleService.GetVehicleRefillConfig(vehicle);
+            if(vDist(px, py, pz, vx, vy ,vz) >= 5.0) continue;
             // console.log(`REFILL: ${vehicle} / ${vDist(px, py, pz, vx, vy, vz).toFixed(2)}`);
-            if(vehicleRefillConfig && !vehicleRefillConfig.isElectic && vDist(px, py, pz, vx, vy ,vz) < 5.0) {
+            const vehicleRefillConfig = this.vehicleService.GetSyncVehicleRefillConfig(vehicle);
+            if(vehicleRefillConfig && !vehicleRefillConfig.isElectic) {
                 const { x: rx, y: ry, z: rz } = vehicleRefillConfig.refillNozzleOffset;
                 const [ worldX, worldY, worldZ ] = GetOffsetFromEntityInWorldCoords(vehicle, rx, ry, rz);
                 const [_, groundZ] = GetGroundZFor_3dCoord(worldX, worldY, worldZ, false);

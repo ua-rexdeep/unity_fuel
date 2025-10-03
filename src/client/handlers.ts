@@ -32,15 +32,15 @@ export class Handler {
         onNet(EventName('PlayerJerryCanUpdated'), this.OnPlayerJerryCanUpdated.bind(this));
 
 
-        if(process.env.NODE_ENV == 'development') {
-            ClearOverrideWeather();
-            ClearWeatherTypePersist();
-            SetWeatherTypePersist('XMAS');
-            SetWeatherTypeNow('XMAS');
-            SetWeatherTypeNowPersist('XMAS');
-            SetForceVehicleTrails(true);
-            SetForcePedFootstepsTracks(true);
-        }
+        // if(process.env.NODE_ENV == 'development') {
+        //     ClearOverrideWeather();
+        //     ClearWeatherTypePersist();
+        //     SetWeatherTypePersist('XMAS');
+        //     SetWeatherTypeNow('XMAS');
+        //     SetWeatherTypeNowPersist('XMAS');
+        //     SetForceVehicleTrails(true);
+        //     SetForcePedFootstepsTracks(true);
+        // }
     }
 
     private async GiveNozzleToPlayer(pumpNet: number, pumpId: number, hosepipeIndex: number, offset: [number, number, number], isElectical: boolean) {
@@ -72,8 +72,8 @@ export class Handler {
         this.hosepipeService.AttachToPlayer(NetworkGetEntityFromNetworkId(entityNet));
     }
 
-    private InsertNozzleIntoEntity(nozzleEntity: number, entNet: number, fuelCupOffset: { x: number, y: number, z: number }) {
-        this.hosepipeService.AttachToEntity(nozzleEntity, entNet, fuelCupOffset, this.vehicleService.GetVehicleRefillConfig(NetworkGetEntityFromNetworkId(entNet)));
+    private async InsertNozzleIntoEntity(nozzleEntity: number, entNet: number, fuelCupOffset: { x: number, y: number, z: number }) {
+        this.hosepipeService.AttachToEntity(nozzleEntity, entNet, fuelCupOffset, await this.vehicleService.GetAsyncVehicleRefillConfig(NetworkGetEntityFromNetworkId(entNet)));
     }
 
     private OnHosepipeSlotBrokenByVehicle(slotEntityNet: number) {
@@ -107,8 +107,8 @@ export class Handler {
     }
 
     private OnConfigReceived(config: ClientConfig) {
-        this.vehicleService.SetDegradeFuelLevel(config.MinFuelForDegrade);
-        this.vehicleService.SetIndividualVehiclesConfig(config.IndividualVehicleData);
+        // this.vehicleService.SetDegradeFuelLevel(config.MinFuelForDegrade); // TODO
+        this.vehicleService.SetIndividualVehicleConfig(config.modelHash, config.config);
     }
 
     private RequestDetachNozzle(nozzleNet: number) {

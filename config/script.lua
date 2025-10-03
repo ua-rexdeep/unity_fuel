@@ -8,9 +8,30 @@ AddEventHandler("UnityFuel::RequestConfig", function()
     })
 end)
 
-RegisterServerEvent("UnityFuel::RequestClientConfig", function()
+RegisterServerEvent("UnityFuel::RequestVehicleIndividualConfig")
+--- @param modelHash number
+AddEventHandler("UnityFuel::RequestVehicleIndividualConfig", function(modelHash)
+    local cfg, modelName;
+    for keyname, data in pairs(IndividualVehicleData) do
+        if GetHashKey(keyname) == modelHash then
+            cfg = data;
+            break;
+        end
+    end
+    print(string.format("[UnityFuel - RequestVehicleIndividualConfig] ModelHash(%s) - %s", modelHash, json.encode(cfg)))
     TriggerClientEvent("UnityFuel::ClientConfig", source, {
-        MinFuelForDegrade = MinFuelForDegrade,
-        IndividualVehicleData = IndividualVehicleData,
+        modelName = modelName,
+        modelHash = modelHash,
+        config = cfg,
     })
-end);
+end)
+
+-- ! Проблема: слишком большой конфиг
+-- TODO: Переделать под запрос настроек отдельного транспорта по требованию.
+-- Временное решение: выдать клиенту доступ к vehicles.lua
+-- RegisterServerEvent("UnityFuel::RequestClientConfig", function()
+--     TriggerClientEvent("UnityFuel::ClientConfig", source, {
+--         MinFuelForDegrade = MinFuelForDegrade,
+--         IndividualVehicleData = IndividualVehicleData,
+--     })
+-- end);

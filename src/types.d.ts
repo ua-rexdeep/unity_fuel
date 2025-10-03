@@ -133,8 +133,11 @@ type ServerConfig = {
     ElecticPumpSpawnLocations: ElecticPumpSpawnLocation[],
 }
 type ClientConfig = {
-    MinFuelForDegrade: number,
-    IndividualVehicleData: Record<string, VehicleConfig>,
+    // MinFuelForDegrade: number,
+    // IndividualVehicleData: Record<string, VehicleConfig>,
+    modelName: string,
+    modelHash: number,
+    config: VehicleConfig,
 }
 interface RopeAttachements {
     pumpCoords: [number, number, number];
