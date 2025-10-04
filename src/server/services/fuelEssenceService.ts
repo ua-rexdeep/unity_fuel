@@ -89,6 +89,7 @@ export class FuelEssenceService {
             };
 
             this.queries.FetchVehicleFuel({plate: GetVehicleNumberPlateText(NetworkGetEntityFromNetworkId(vehicleNet))}).then(([vehicle_row]) => {
+                console.log(`[UnityFuel - AddVehicleToCache/FetchVehicleFuel] vehicle_row(${JSON.stringify(vehicle_row)})`);
                 if (!vehicle_row) this.SetVehicleFuel(vehicleNet, Math.random() * (20 - 5) + 5);
                 else {
                     if(vehicle_row.fuelLevel == -1) vehicle_row.fuelLevel = this.GetVehicleMaxFuel(vehicleNet);

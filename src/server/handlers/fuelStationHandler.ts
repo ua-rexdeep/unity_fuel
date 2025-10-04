@@ -246,6 +246,7 @@ export class FuelStationHandler {
     }
 
     private async UpdatePlayerJerryCanData(data: { petrol?: number, solvent?: number }) {
+        console.log(`[UnityFuel - UpdatePlayerJerryCanData] source(${global.source}) data(${JSON.stringify(data)})`); // ! MAY BE LEAK OF EVENTS
         this.playerService.UpdatePlayerDataTable(global.source, {
             jerryCanWeaponData: data,
         });
@@ -275,16 +276,29 @@ export class FuelStationHandler {
             hosepipe.SetDropped();
         }
 
-        const jerryCanData = this.essenceService.GetPlacedJerryCan(entityNet);
-        console.log('OnPropPickup', entityNet, jerryCanData);
+        const { gasPump: _, ...jerryCanData} = this.essenceService.GetPlacedJerryCan(entityNet);
+        console.log('[UnityFuel - OnPropPickup]', entityNet, jerryCanData);
         if (jerryCanData) {
+            this.essenceService.DeletePlacedJerryCan(entityNet);
             this.playerService.UpdatePlayerDataTable(player, {
                 jerryCanWeaponData: {
                     ...jerryCanData.content,
                     itemid: jerryCanData.itemid,
                 },
             });
-            this.essenceService.DeletePlacedJerryCan(entityNet);
+        } else {
+            const itemid = Date.now();
+            await this.vRP.createItem('item', `jerryCan_${itemid}`, 'Канистра', '', 2.5);
+            this.service.DefineJerryCan(itemid.toString(), { itemid: itemid.toString() });
+            
+            this.playerService.UpdatePlayerDataTable(player, {
+                jerryCanWeaponData: {
+                    petrol: 0,
+                    solvent: 0,
+                    itemid: `jerryCan_${itemid}`,
+                },
+            });
+            console.log(`[UnityFuel - OnPropPickup] undefined jerrycan was declared. new id: ${itemid}`);
         }
     }
 

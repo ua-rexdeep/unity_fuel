@@ -212,26 +212,65 @@ export class FuelPump {
         if (!hosepipe) hosepipe = await this.CreateHosepipe(hosepipeIndex, slotWorldCoords, viewDisplayWorldCoords);
 
         if (hosepipe.IsTakenOut()) {
-            if (null != hosepipe.GetVehicle() || null != hosepipe.GetJerryCan()) {
-                if (hosepipe.GetVehicle() && this.essenceService.GetVehicleRefillingData(hosepipe.GetVehicle()!).inProgress) return this.playerService.Request(source, 'Отменить заправку?', 10, ((source, ok) => {
-                    if(ok) this.essenceService.InterruptVehicleRefill(hosepipe!.GetVehicle()!, null, !0);
-                })), void setTimeout((() => this.SetBusy(!1)));
-                if (hosepipe.GetJerryCan() && this.essenceService.GetPlacedJerryCan(hosepipe.GetJerryCan()!).refuelInterval) return this.playerService.Request(source, 'Отменить заправку?', 10, ((source, ok) => {
-                    if(ok) this.essenceService.InterruptJerryCanRefill(hosepipe!.GetJerryCan()!, null, !0);
-                })), void setTimeout((() => this.SetBusy(!1)));
-                const t = await this.playerService.GetPlayerPhoneBankAccount(source);
-                return t?.registerState ? this.playerService.Request(source, 'Оплатить через банк?', 10, ((t, i) => {
-                    if (i)
-                        if (hosepipe?.GetVehicle()) this.essenceService.RequestVehicleRefuel(source, hosepipe.GetVehicle()!, this.station!.GetFuelCost(), this.service);
-                        else {
-                            if (!hosepipe?.GetJerryCan()) throw new Error('Undefined entity that holds nozzle');
-                            this.essenceService.RequestJerryCanRefuel(source, hosepipe, hosepipe.GetJerryCan()!, this.station!.GetFuelCost());
+            const vehicle = hosepipe.GetVehicle();
+            const jerryCan = hosepipe.GetJerryCan();
+            const player = hosepipe.GetPlayer();
+
+            if (vehicle || jerryCan) {
+                const vehicleRefill = vehicle
+                    ? this.essenceService.GetVehicleRefillingData(vehicle)?.inProgress
+                    : false;
+
+                if (vehicleRefill) {
+                    this.playerService.Request(source, 'Отменить заправку?', 10, (source, ok) => {
+                        if (ok) this.essenceService.InterruptVehicleRefill(vehicle!, null, true);
+                    });
+                    setTimeout(() => this.SetBusy(false));
+                    return;
+                }
+
+                const jerryRefill = jerryCan
+                    ? this.essenceService.GetPlacedJerryCan(jerryCan)?.refuelInterval
+                    : false;
+
+                if (jerryRefill) {
+                    this.playerService.Request(source, 'Отменить заправку?', 10, (source, ok) => {
+                        if (ok) this.essenceService.InterruptJerryCanRefill(jerryCan!, null, true);
+                    });
+                    setTimeout(() => this.SetBusy(false));
+                    return;
+                }
+
+                const bank = await this.playerService.GetPlayerPhoneBankAccount(source);
+                const cost = this.station!.GetFuelCost();
+
+                if (bank?.registerState) {
+                    this.playerService.Request(source, 'Оплатить через банк?', 10, (source, ok) => {
+                        if (!ok) return;
+
+                        if (vehicle) {
+                            this.essenceService.RequestVehicleRefuel(source, vehicle, cost, this.service);
+                        } else if (jerryCan) {
+                            this.essenceService.RequestJerryCanRefuel(source, hosepipe, jerryCan, cost);
+                        } else {
+                            throw new Error('Undefined entity that holds nozzle');
                         }
-                })) : this.playerService.Notification(source, '~r~Невозможно оплатить через банк'), setTimeout((() => this.SetBusy(!1))), !1;
+                    });
+                } else {
+                    this.playerService.Notification(source, '~r~Невозможно оплатить через банк');
+                }
+
+                setTimeout(() => this.SetBusy(false));
+                return false;
             }
-            if (null == hosepipe.GetPlayer() || null != hosepipe.GetPlayer() && hosepipe.GetPlayer() != source) 
-                return this.playerService.Notification(source, '~r~В колонке нет пистолета'), setTimeout((() => this.SetBusy(!1))), !1;
+
+            if (!player || player !== source) {
+                this.playerService.Notification(source, '~r~В колонке нет пистолета');
+                setTimeout(() => this.SetBusy(false));
+                return false;
+            }
         }
+
 
         if (hosepipe.GetPlayer() == source) {
             hosepipe.DeleteNozzle();

@@ -116,6 +116,10 @@ export class VehicleService {
             return this.IndividualVehiclesConfig[model];
         } else {
             console.log(`[VehicleService - GetSyncVehicleRefillConfig] hash(${model}): no config, requested`);
+            if(this.requestedIndividualConfigs[model]) return null;
+            this.requestedIndividualConfigs[model] = () => {
+                console.log(`[VehicleService - GetSyncVehicleRefillConfig] received sync config for hash(${model})`);
+            };
             emitNet(EventName('RequestVehicleIndividualConfig'), model);
         }
         return null;

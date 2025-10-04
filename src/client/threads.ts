@@ -115,20 +115,18 @@ export class Threads {
             const [offx, offy, offz] = GetWorldPositionOfEntityBone(playerPed, GetPedBoneIndex(playerPed, 57005));
             DrawText3D(offx, offy, offz, this.JerryCanService.GetContentAmount() > 0 ? `${this.JerryCanService.GetContentAmount().toFixed(2)}L` : 'Empty');
 
-            const RefillNearestVehicle = this.VehicleJerryCanRefill();
-            const PreventFiring = RefillNearestVehicle || this.JerryCanService.GetContentAmount() == 0;
+            const isPlayerRefillingNearestVehicle = this.VehicleJerryCanRefill(); // pressing FIRE and conditions to refill nearest vehicle
+            const PreventFiring = isPlayerRefillingNearestVehicle || this.JerryCanService.GetContentAmount() == 0;
             if(PreventFiring) {
                 DisablePlayerFiring(PlayerId(), true);
                 DisableControlAction(2, 24, true);
                 DisableControlAction(2, 142, true);
                 DisableControlAction(2, 257, true);
-            }
 
-            if(IsPedShooting(playerPed) || IsDisabledControlPressed(0, 24)) {                
-                if(PreventFiring) {
+                if(IsPedShooting(playerPed)) {
                     ClearPedTasks(playerPed);
-                    return;
                 }
+            } else if(IsDisabledControlPressed(0, 24)) {                
 
                 this.count++;
                 if(this.count > 50) {
@@ -247,7 +245,7 @@ export class Threads {
                             }
                         } else {
                             this.refillCount++;
-                            if(this.refillCount % 5 == 0) {
+                            if(this.refillCount % 1 == 0) {
                                 const ret = this.JerryCanService.OnWeaponFire();
                                 if(ret && ret.content) {
                                     if(ret.content in this.refilledData) this.refilledData[ret.content] += ret.value;
